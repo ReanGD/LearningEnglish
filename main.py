@@ -4,6 +4,7 @@ from Tkinter import *
 import json
 import tkFont
 import random
+import re
 
 class Word:
 	def __init__(self, en_word, transcription, ru_word):
@@ -143,12 +144,11 @@ class Window(Tk):
 			self.lbl_result_msg["fg"] = "#FC0039"
 
 class App:
-	def __init__(self, dict_path, max_success):
-		self.max_success = max_success
-		raw_dict = json.loads(open(dict_path).read())
-		self.words = []
-		for it in raw_dict:
-			self.words.append(Word(it[0],it[1],it[2]))
+	def __init__(self):
+		config_txt		 = re.compile(r"/\*.*?\*/", re.DOTALL).sub("", open("config.json").read()) # удаляем комментарии
+		config_params	 = json.loads(config_txt)
+		self.max_success = config_params["words_per_lesson"]
+		self.words		 = self.load_dict(config_params["path_to_dict"])
 
 		self.win = Window(self.get_next)
 		self.win.init_window()
@@ -156,6 +156,13 @@ class App:
 		self.error_cnt = 0
 		self.get_next(None)
 		self.win.mainloop()
+
+	def load_dict(self, path):
+		words = []
+		raw_dict = json.loads(open(path).read())
+		for it in raw_dict:
+			words.append(Word(it[0],it[1],it[2]))
+		return words
 
 	def update_stat(self, is_success):
 		if is_success != None:
@@ -171,8 +178,8 @@ class App:
 			self.win.destroy()
 		else:
 			num = random.randint(0, len(self.words)-1)
-			is_en_to_ru = random.randint(0, 1) == 1		
+			is_en_to_ru = random.randint(0, 1) == 1
 			self.win.set_word(self.words[num], is_en_to_ru)
 
 if __name__=="__main__":
-	App("dict.json", 5)
+	App()
