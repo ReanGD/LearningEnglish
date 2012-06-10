@@ -21,9 +21,8 @@ class Word:
 class Window(Tk):
 	def __init__(self, next_word_callback):
 		Tk.__init__(self)
-
 		self.next_word_callback = next_word_callback
-		self.show_answer = True
+		self.show_answer = False
 		self.word = None
 		self.lbl_word = None
 		self.is_success = None
@@ -33,16 +32,31 @@ class Window(Tk):
 		self.lbl_correct_word = None
 		self.lbl_correct_word_tr = None
 
-		self.title("Изучаем английский")
-		self.resizable(False, False)
-		
+	def init_window(self):
+		fnt_stat          = tkFont.Font(family="Arial", size=9)
 		fnt_msg           = tkFont.Font(family="Arial", size=10, weight='bold')
 		fnt_word          = tkFont.Font(family="Arial", size=14)
 		fnt_transcription = tkFont.Font(family="Arial", size=10)
 		fnt_translate     = tkFont.Font(family="Arial", size=12)
 
+		clr_stat_frame   = "#E9F6FE"
 		clr_word_frame   = "#FFFFE0"
-		clr_answer_frame = "#E9F6FE"		
+		clr_answer_frame = "#E9F6FE"
+		clr_success      = "#348000"
+		clr_error        = "#FC0039"
+
+		########################################################
+
+		frm_stat = Frame(self, bg=clr_stat_frame, bd=5)
+		frm_stat.pack(fill="both")
+
+		Label(frm_stat, font=fnt_stat, bg=clr_stat_frame, text="Верно/Неверно").pack(side="left")
+
+		self.lbl_stat_error = Label(frm_stat, font=fnt_stat, bg=clr_stat_frame, fg=clr_error, borderwidth=0)
+		self.lbl_stat_error.pack(side="right")
+
+		self.lbl_stat_success = Label(frm_stat, font=fnt_stat, bg=clr_stat_frame, fg=clr_success, borderwidth=0)
+		self.lbl_stat_success.pack(side="right")
 
 		########################################################
 
@@ -81,6 +95,8 @@ class Window(Tk):
 
 		x = (self.winfo_screenwidth() - self.winfo_reqwidth()) / 2
 		y = (self.winfo_screenheight() - self.winfo_reqheight()) / 2
+		self.title("Изучаем английский")
+		self.resizable(False, False)
 		self.wm_geometry("+%d+%d" % (x, y))
 
 	def set_word(self, word, is_en_to_ru):
@@ -98,14 +114,16 @@ class Window(Tk):
 		self.lbl_correct_word["text"] = ""
 		self.lbl_correct_word_tr["text"] = ""
 		self.edit_translate.delete(0, END)
+
+	def set_stat(self, success_cnt, max_success, error_cnt):
+		self.lbl_stat_success['text'] = "%i из %i/" % (success_cnt, max_success)
+		self.lbl_stat_error['text'] = "%i" % error_cnt
 	
 	def on_check_translate(self, event):
+		self.show_answer = not self.show_answer
 		if not self.show_answer:
-			self.show_answer = True
 			self.next_word_callback(self.is_success)
 			return
-
-		self.show_answer = False
 
 		user_answer = event.widget.get()
 		if self.is_en_to_ru:
@@ -125,27 +143,36 @@ class Window(Tk):
 			self.lbl_result_msg["fg"] = "#FC0039"
 
 class App:
-	def __init__(self, dict_path, cnt_word):
-		self.cnt_word = cnt_word
+	def __init__(self, dict_path, max_success):
+		self.max_success = max_success
 		raw_dict = json.loads(open(dict_path).read())
 		self.words = []
 		for it in raw_dict:
 			self.words.append(Word(it[0],it[1],it[2]))
 
 		self.win = Window(self.get_next)
+		self.win.init_window()
 		self.success_cnt = 0
+		self.error_cnt = 0
 		self.get_next(None)
 		self.win.mainloop()
 
+	def update_stat(self, is_success):
+		if is_success != None:
+			if is_success:
+				self.success_cnt += 1
+			else:
+				self.error_cnt += 1
+		self.win.set_stat(self.success_cnt, self.max_success, self.error_cnt)
+
 	def get_next(self, is_success):
-		if is_success:
-			self.success_cnt += 1
-			if self.cnt_word == self.success_cnt:
-				self.win.destroy()
-				return
-		num = random.randint(0, len(self.words)-1)
-		is_en_to_ru = random.randint(0, 1) == 1
-		self.win.set_word(self.words[num], is_en_to_ru)
+		self.update_stat(is_success)
+		if self.max_success == self.success_cnt:
+			self.win.destroy()
+		else:
+			num = random.randint(0, len(self.words)-1)
+			is_en_to_ru = random.randint(0, 1) == 1		
+			self.win.set_word(self.words[num], is_en_to_ru)
 
 if __name__=="__main__":
 	App("dict.json", 5)
