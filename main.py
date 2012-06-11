@@ -11,13 +11,14 @@ class Word:
 		self.en_word		= en_word
 		self.transcription	= '[%s]' % transcription
 		self.ru_word		= ru_word
+		self.ru_word_list	= map(lambda x : x.strip().lower(), ru_word.split(','))		
 
 	def check(self, answer, is_en_to_ru):
+		answer = answer.strip().lower()
 		if is_en_to_ru:
-			success_answer = self.ru_word
+			return answer in self.ru_word_list
 		else:
-			success_answer = self.en_word
-		return answer.strip().lower() == success_answer.strip().lower()
+			return answer == self.en_word.strip().lower()
 
 class Window(Tk):
 	def __init__(self, next_word_callback):
