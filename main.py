@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 
-from Tkinter import *
-import json
-import tkFont
-import random
 import re
+import json
+import random
+import os,os.path
+from tkFont import Font
+from Tkinter import *
 
 class Word:
 	def __init__(self, en_word, transcription, ru_word):
@@ -35,11 +36,11 @@ class Window(Tk):
 		self.lbl_correct_word_tr = None
 
 	def init_window(self):
-		fnt_stat          = tkFont.Font(family="Arial", size=9)
-		fnt_msg           = tkFont.Font(family="Arial", size=10, weight='bold')
-		fnt_word          = tkFont.Font(family="Arial", size=14)
-		fnt_transcription = tkFont.Font(family="Arial", size=10)
-		fnt_translate     = tkFont.Font(family="Arial", size=12)
+		fnt_stat          = Font(family="Arial", size=9)
+		fnt_msg           = Font(family="Arial", size=10, weight='bold')
+		fnt_word          = Font(family="Arial", size=14)
+		fnt_transcription = Font(family="Arial", size=10)
+		fnt_translate     = Font(family="Arial", size=12)
 
 		clr_stat_frame   = "#E9F6FE"
 		clr_word_frame   = "#FFFFE0"
@@ -146,8 +147,8 @@ class Window(Tk):
 
 class App:
 	def __init__(self):
-		config_txt		 = re.compile(r"/\*.*?\*/", re.DOTALL).sub("", open("config.json").read()) # удаляем комментарии
-		config_params	 = json.loads(config_txt)
+		os.chdir(os.path.dirname(__file__))
+		config_params	 = self.load_config("config.json")
 		self.max_success = config_params["words_per_lesson"]
 		self.words		 = self.load_dict(config_params["path_to_dict"])
 
@@ -157,6 +158,11 @@ class App:
 		self.error_cnt = 0
 		self.get_next(None)
 		self.win.mainloop()
+
+	def load_config(self, path):
+		config_txt = open(path).read()
+		config_txt = re.compile(r"/\*.*?\*/", re.DOTALL).sub("", config_txt) # удаляем комментарии
+		return json.loads(config_txt)
 
 	def load_dict(self, path):
 		words = []
