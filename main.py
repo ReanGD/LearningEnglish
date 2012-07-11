@@ -189,4 +189,6 @@ class App:
 			self.win.set_word(self.words[num], is_en_to_ru)
 
 if __name__=="__main__":
+	import singleton
+	me = singleton.SingleInstance()
 	App()
