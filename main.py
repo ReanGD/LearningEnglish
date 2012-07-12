@@ -102,6 +102,13 @@ class Window(Tk):
 		self.resizable(False, False)
 		self.wm_geometry("+%d+%d" % (x, y))
 
+	def show(self):
+		self.deiconify()
+		self.edit_translate.focus()
+
+	def hide(self):
+		self.withdraw()
+
 	def set_word(self, word, is_en_to_ru):
 		self.word = word
 		self.is_en_to_ru = is_en_to_ru
@@ -146,18 +153,20 @@ class Window(Tk):
 			self.lbl_result_msg["fg"] = "#FC0039"
 
 class App:
-	def __init__(self):
-		os.chdir(os.path.dirname(__file__))
-		config_params	 = self.load_config("config.json")
-		self.max_success = config_params["words_per_lesson"]
-		self.words		 = self.load_dict(config_params["path_to_dict"])
-
+	def __init__(self):		
 		self.win = Window(self.get_next)
 		self.win.init_window()
-		self.success_cnt = 0
-		self.error_cnt = 0
-		self.get_next(None)
+		self.new_lesson()
 		self.win.mainloop()
+
+	def reload(self):
+		os.chdir(os.path.dirname(__file__))
+		config_params    = self.load_config("config.json")
+		self.max_success = config_params["words_per_lesson"]
+		self.retry_time  = config_params["retry_time"]
+		self.words       = self.load_dict(config_params["path_to_dict"])
+		self.success_cnt = 0
+		self.error_cnt   = 0
 
 	def load_config(self, path):
 		config_txt = open(path).read()
@@ -179,10 +188,17 @@ class App:
 				self.error_cnt += 1
 		self.win.set_stat(self.success_cnt, self.max_success, self.error_cnt)
 
+	def new_lesson(self):
+		self.reload()
+		self.get_next(None)
+		self.win.show()
+
 	def get_next(self, is_success):
 		self.update_stat(is_success)
 		if self.max_success == self.success_cnt:
-			self.win.destroy()
+			self.win.hide()
+			self.win.after(self.retry_time*1000, self.new_lesson)
+			# self.win.destroy()
 		else:
 			num = random.randint(0, len(self.words)-1)
 			is_en_to_ru = random.randint(0, 1) == 1
