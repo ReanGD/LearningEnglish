@@ -6,6 +6,7 @@ import random
 import os,os.path
 from tkFont import Font
 from Tkinter import *
+import tkSimpleDialog
 
 class Word:
 	def __init__(self, en_word, transcription, ru_word):
@@ -21,10 +22,22 @@ class Word:
 		else:
 			return answer == self.en_word.strip().lower()
 
+class CloseDialog(tkSimpleDialog.Dialog):
+	def body(self, master):
+		self.var = IntVar(0)
+		Radiobutton(master, text='Завершить текущий урок', variable=self.var, value=0).grid(sticky="w")
+		Radiobutton(master, text='Закрыть программу', variable=self.var, value=1).grid(sticky="w")
+		self.resizable(False, False)
+		return None
+
+	def apply(self):
+		self.result = self.var.get()
+
 class Window(Tk):
-	def __init__(self, next_word_callback):
+	def __init__(self, next_word_callback, end_lesson_callback):
 		Tk.__init__(self)
-		self.next_word_callback = next_word_callback
+		self.next_word_callback  = next_word_callback
+		self.end_lesson_callback = end_lesson_callback
 		self.show_answer = False
 		self.word = None
 		self.lbl_word = None
@@ -101,6 +114,7 @@ class Window(Tk):
 		self.title("Изучаем английский")
 		self.resizable(False, False)
 		self.wm_geometry("+%d+%d" % (x, y))
+		self.protocol('WM_DELETE_WINDOW', self.on_destroy)
 
 	def show(self):
 		self.deiconify()
@@ -108,6 +122,13 @@ class Window(Tk):
 
 	def hide(self):
 		self.withdraw()
+
+	def on_destroy(self):
+		dlg = CloseDialog(self)
+		if dlg.result == 1:
+			self.quit()
+		elif dlg.result == 0:
+			self.end_lesson_callback()
 
 	def set_word(self, word, is_en_to_ru):
 		self.word = word
@@ -154,7 +175,7 @@ class Window(Tk):
 
 class App:
 	def __init__(self):		
-		self.win = Window(self.get_next)
+		self.win = Window(self.get_next, self.end_lesson)
 		self.win.init_window()
 		self.new_lesson()
 		self.win.mainloop()
@@ -193,12 +214,14 @@ class App:
 		self.get_next(None)
 		self.win.show()
 
+	def end_lesson(self):
+		self.win.hide()
+		self.win.after(self.retry_time*1000, self.new_lesson)
+
 	def get_next(self, is_success):
 		self.update_stat(is_success)
 		if self.max_success == self.success_cnt:
-			self.win.hide()
-			self.win.after(self.retry_time*1000, self.new_lesson)
-			# self.win.destroy()
+			self.end_lesson()
 		else:
 			num = random.randint(0, len(self.words)-1)
 			is_en_to_ru = random.randint(0, 1) == 1
