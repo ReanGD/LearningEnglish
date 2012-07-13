@@ -133,7 +133,10 @@ class MainWindow(Tk):
 		self.lbl_correct_word_tr["text"] = ""
 		self.edit_translate.delete(0, END)
 
-	def set_stat(self, success_cnt, max_success, error_cnt):
+	def set_stat(self, stat):
+		success_cnt = stat[0]
+		max_success = stat[1]
+		error_cnt   = stat[2]
 		self.lbl_stat_success['text'] = "%i %s %i/" % (success_cnt, _("of"), max_success)
 		self.lbl_stat_error['text']   = "%i" % error_cnt
 	
