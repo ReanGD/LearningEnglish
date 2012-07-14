@@ -119,6 +119,7 @@ class MainWindow(Tk):
 	def on_destroy(self):
 		dlg = CloseDialog(self)
 		if dlg.result == 1:
+			self.end_lesson_callback()
 			self.quit()
 		elif dlg.result == 0:
 			self.end_lesson_callback()
