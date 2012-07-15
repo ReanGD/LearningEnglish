@@ -13,8 +13,8 @@ ru_to_en_write = 1
 
 class Statistic:
 	def __init__(self):
-		self.success_answer     = 0.0
-		self.error_answer       = 0.0
+		self.success_answer     = 0
+		self.error_answer       = 0
 		self.last_lesson_date   = None
 		self.last_lesson_result = None
 
@@ -282,7 +282,15 @@ class App:
 	def load_config(self, path):
 		config_txt = open(path).read()
 		config_txt = re.compile(r"/\*.*?\*/", re.DOTALL).sub("", config_txt) # remove comments
-		return json.loads(config_txt)
+		cfg = json.loads(config_txt)
+		cfg["path_to_dict"]     = cfg.get("path_to_dict","dict.json")
+		cfg["path_to_stat"]     = cfg.get("path_to_stat","statistic.json")
+		cfg["words_per_lesson"] = int(cfg.get("words_per_lesson",5))
+		cfg["CntStudyWords"]    = int(cfg.get("CntStudyWords",50))
+		cfg["MinPercent"]       = float(cfg.get("MinPercent",97.0))
+		cfg["MinSuccessCnt"]    = int(cfg.get("MinSuccessCnt",10))
+		cfg["retry_time"]       = int(cfg.get("retry_time",1800))
+		return cfg
 
 	def new_lesson(self):		
 		cfg             = self.load_config("config.json")
@@ -303,8 +311,11 @@ class App:
 			self.win.set_stat(self.lesson.get_lesson_stat())
 			self.win.set_word(self.lesson.get_next_practice())
 
-if __name__=="__main__":
+def run():
 	import singleton
 	me = singleton.SingleInstance()
 	os.chdir(os.path.dirname(__file__))
 	App()
+
+if __name__=="__main__":
+	run()
