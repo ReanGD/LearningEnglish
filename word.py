@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 
+import re
 import unittest
 import statistic
 
 en_to_ru_write = 0
 ru_to_en_write = 1
+
+reg_cmnt = re.compile("\(.*?\)")
 
 class Word:
 	def __init__(self):
@@ -20,11 +23,11 @@ class Word:
 			self.en_word		= en_word.strip()
 		if self.transcription == "":
 			self.transcription	= "[%s]" % transcription.strip()
-		if self.ru_word == "":
-			self.ru_word		= ru_word.strip()
-		else:
-			self.ru_word		= "%s, %s" % (self.ru_word, ru_word.strip())
-		self.ru_word_list		= map(lambda x : x.strip().lower(), self.ru_word.split(","))
+		if self.ru_word != "":
+			ru_word = self.ru_word + "," + ru_word
+		word_list = map(lambda x : x.strip(), ru_word.split(","))
+		self.ru_word = ", ".join(word_list)
+		self.ru_word_list = map(lambda x : reg_cmnt.sub("", x.lower()).strip(), word_list)		
 
 	def set_rating(self, value):
 		self.rating = value
@@ -72,6 +75,8 @@ class Word:
 class WordTestCase(unittest.TestCase):
 	def setUp(self):
 		self.word = Word()
+		self.hello_tr = "\'he\'ləu"
+		self.hello_tr_out = "[\'he\'ləu]"
 
 	def test_init(self):
 		self.assertEqual(self.word.en_word,       "")
@@ -85,30 +90,28 @@ class WordTestCase(unittest.TestCase):
 
 	def test_add_value(self):
 		en_word       = "Hello"
-		transcription = "\'he\'ləu"
 		ru_word0      = "привет"
-		self.word.add_value("  "+en_word+"  ", "  "+transcription+"  ", "  "+ru_word0+"  ")
+		self.word.add_value("  "+en_word+"  ", "  "+self.hello_tr+"  ", "  "+ru_word0+"  ")
 		self.assertEqual(self.word.en_word,       en_word)
-		self.assertEqual(self.word.transcription, "["+transcription+"]")
+		self.assertEqual(self.word.transcription, self.hello_tr_out)
 		self.assertEqual(self.word.ru_word,       ru_word0)
 		self.assertEqual(self.word.ru_word_list,  [ru_word0])
 		
 		ru_word1 = "приветствие"
-		self.word.add_value("  "+en_word+"  ", "  "+transcription+"  ", "  "+ru_word1+"  ")
+		self.word.add_value("  "+en_word+"  ", "  "+self.hello_tr+"  ", "  "+ru_word1+"  ")
 		self.assertEqual(self.word.en_word,       en_word)
-		self.assertEqual(self.word.transcription, "["+transcription+"]")
+		self.assertEqual(self.word.transcription, self.hello_tr_out)
 		self.assertEqual(self.word.ru_word,       ru_word0+", "+ru_word1)
 		self.assertEqual(self.word.ru_word_list,  [ru_word0, ru_word1])
 
 	def test_add_value_double_ru(self):
 		en_word       = "Hello"
-		transcription = "\'he\'ləu"
 		ru_word0      = "привет"
 		ru_word1      = "алло"
 		
-		self.word.add_value("  "+en_word+"  ", "  "+transcription+"  ", "  "+ru_word0+", "+ru_word1+"  ")
+		self.word.add_value("  "+en_word+"  ", "  "+self.hello_tr+"  ", "  "+ru_word0+", "+ru_word1+"  ")
 		self.assertEqual(self.word.en_word,       en_word)
-		self.assertEqual(self.word.transcription, "["+transcription+"]")
+		self.assertEqual(self.word.transcription, self.hello_tr_out)
 		self.assertEqual(self.word.ru_word,       ru_word0+", "+ru_word1)
 		self.assertEqual(self.word.ru_word_list,  [ru_word0, ru_word1])
 		
@@ -116,9 +119,21 @@ class WordTestCase(unittest.TestCase):
 		ru_word3 = "оклик"
 		self.word.add_value("  "+en_word+"  ", None, "  "+ru_word2+", "+ru_word3+"  ")
 		self.assertEqual(self.word.en_word,       en_word)
-		self.assertEqual(self.word.transcription, "["+transcription+"]")
+		self.assertEqual(self.word.transcription, self.hello_tr_out)
 		self.assertEqual(self.word.ru_word,       ru_word0+", "+ru_word1+", "+ru_word2+", "+ru_word3)
 		self.assertEqual(self.word.ru_word_list,  [ru_word0, ru_word1, ru_word2, ru_word3])
+
+	def test_add_value_cmnt(self):
+		en_word       = "Hello"
+		ru_word0      = "привет"
+		ru_word0_cmnt = "(Здоровается)"
+		ru_word1      = "алло"
+		
+		self.word.add_value("  "+en_word+"  ", "  "+self.hello_tr+"  ", "  "+ru_word0+" "+ru_word0_cmnt+" , "+ru_word1+"  ")
+		self.assertEqual(self.word.en_word,       en_word)
+		self.assertEqual(self.word.transcription, self.hello_tr_out)
+		self.assertEqual(self.word.ru_word,       ru_word0+" "+ru_word0_cmnt+", "+ru_word1)
+		self.assertEqual(self.word.ru_word_list,  [ru_word0, ru_word1])		
 
 	def test_rating(self):
 		rating = 51.879
@@ -127,33 +142,30 @@ class WordTestCase(unittest.TestCase):
 
 	def test_source_data(self):
 		en_word       = "Hello"
-		transcription = "\'he\'ləu"
 		ru_word       = "привет"
-		self.word.add_value(en_word, transcription, ru_word)
-		self.assertEqual(self.word.source_data(en_to_ru_write), (en_word, "["+transcription+"]"))
+		self.word.add_value(en_word, self.hello_tr, ru_word)
+		self.assertEqual(self.word.source_data(en_to_ru_write), (en_word, self.hello_tr_out))
 		self.assertEqual(self.word.source_data(ru_to_en_write), (ru_word, ""))
 
 	def test_check(self):
 		en_word       = "Hello"
-		transcription = "\'he\'ləu"
 		ru_word0      = "привет"
 		ru_word1      = "алло"		
-		self.word.add_value(en_word, transcription, ru_word0+","+ru_word1)
+		self.word.add_value(en_word, self.hello_tr, ru_word0+","+ru_word1)
 
-		self.assertEqual(self.word.check("  "+ru_word0.upper()+"  ", en_to_ru_write), (True, ru_word0+","+ru_word1, ""))
-		self.assertEqual(self.word.check("  "+ru_word1.upper()+"  ", en_to_ru_write), (True, ru_word0+","+ru_word1, ""))
-		self.assertEqual(self.word.check("error_answer", en_to_ru_write), (False, ru_word0+","+ru_word1, ""))
+		self.assertEqual(self.word.check("  "+ru_word0.upper()+"  ", en_to_ru_write), (True, ru_word0+", "+ru_word1, ""))
+		self.assertEqual(self.word.check("  "+ru_word1.upper()+"  ", en_to_ru_write), (True, ru_word0+", "+ru_word1, ""))
+		self.assertEqual(self.word.check("error_answer", en_to_ru_write), (False, ru_word0+", "+ru_word1, ""))
 
-		self.assertEqual(self.word.check("  "+en_word.upper()+"  ", ru_to_en_write), (True, en_word, "["+transcription+"]"))
-		self.assertEqual(self.word.check("error_answer", ru_to_en_write), (False, en_word, "["+transcription+"]"))
+		self.assertEqual(self.word.check("  "+en_word.upper()+"  ", ru_to_en_write), (True, en_word, self.hello_tr_out))
+		self.assertEqual(self.word.check("error_answer", ru_to_en_write), (False, en_word, self.hello_tr_out))
 
 	def test_is_load(self):
 		self.assertEqual(self.word.is_load(), False)
 
 		en_word       = "Hello"
-		transcription = "\'he\'ləu"
 		ru_word       = "привет"
-		self.word.add_value(en_word, transcription, ru_word)
+		self.word.add_value(en_word, self.hello_tr, ru_word)
 		self.assertEqual(self.word.is_load(), True)
 
 	def test_unpack(self):
