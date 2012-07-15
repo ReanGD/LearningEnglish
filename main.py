@@ -5,74 +5,8 @@ import json
 import random
 import datetime
 import os,os.path
-import statistic
+import word
 import GUI
-
-en_to_ru_write = 0
-ru_to_en_write = 1
-
-class Word:
-	def __init__(self):
-		self.en_word		= ""
-		self.transcription	= ""
-		self.ru_word		= ""
-		self.ru_word_list	= []
-		self.rating			= 0
-		self.stat 			= {en_to_ru_write : statistic.Statistic(), ru_to_en_write : statistic.Statistic()}
-
-	def add_value(self, en_word, transcription, ru_word):
-		if self.en_word == "":
-			self.en_word		= en_word.strip()
-		if self.transcription == "":
-			self.transcription	= "[%s]" % transcription.strip()
-		if self.ru_word == "":
-			self.ru_word		= ru_word.strip()
-		else:
-			self.ru_word		= "%s, %s" % (self.ru_word, ru_word.strip())
-		self.ru_word_list		= map(lambda x : x.strip().lower(), self.ru_word.split(","))
-
-	def set_rating(self, value):
-		self.rating = value
-
-	def get_rating(self):
-		return self.rating
-
-	def source_data(self, type_pr):
-		if type_pr == en_to_ru_write:
-			return self.en_word, self.transcription
-		else:
-			return self.ru_word, ""
-
-	def check(self, answer, type_pr):
-		answer = answer.strip().lower()
-		if type_pr == en_to_ru_write:
-			is_success = (answer in self.ru_word_list)
-			return is_success, self.ru_word, ""
-		else:
-			is_success = (answer == self.en_word.strip().lower())
-			return is_success, self.en_word, self.transcription
-
-	def update_stat(self, is_success, dt, type_pr):
-		self.stat[type_pr].update(is_success, dt)
-
-	def is_load(self):
-		return self.transcription != ""
-
-	def get_stat(self, type_pr):
-		return self.stat[type_pr]
-
-	def unpack(self, statistic):
-		for it in statistic:
-			it_int = int(it)
-			if it_int not in self.stat.keys():
-				self.stat[it_int] = statistic.Statistic()
-			self.stat[it_int].unpack(statistic[it])
-
-	def pack(self):
-		data = {}
-		for it in self.stat:
-			data[it] = self.stat[it].pack()
-		return data
 
 class Dict:
 	def __init__(self):
@@ -80,11 +14,11 @@ class Dict:
 		self.lesson_words = []
 
 	def get_word_by_key(self, en):
-		word = self.words.get(en)
-		if word == None:
-			word = Word()
-			self.words[en] = word
-		return word
+		w = self.words.get(en)
+		if w == None:
+			w = word.Word()
+			self.words[en] = w
+		return w
 
 	def reload_dict(self, path_to_dict):
 		self.words = {}
@@ -107,27 +41,27 @@ class Dict:
 	def words_for_lesson(self, cnt_study_words, min_percent, min_success_cnt, type_pr):
 		learned_words = []
 		studied_words = []
-		for word, stat in self.loaded_words(type_pr):
+		for wrd, stat in self.loaded_words(type_pr):
 			if stat.get_total_answer() > 0:
 				if stat.get_success_persent() >= min_percent and stat.get_total_answer() >= min_success_cnt:
-					learned_words.append(word)
+					learned_words.append(wrd)
 				else:
-					studied_words.append(word)
+					studied_words.append(wrd)
 
 		# дополняем изучаемыми/изученными словами из другого направления перевода
 		if len(studied_words) < cnt_study_words:
-			inv_type_pr = ru_to_en_write if type_pr == en_to_ru_write else en_to_ru_write
-			for word, stat in self.loaded_words(inv_type_pr):
-				if stat.get_total_answer() > 0 and word not in (learned_words+studied_words):
-					studied_words.append(word)
+			inv_type_pr = word.ru_to_en_write if type_pr == word.en_to_ru_write else word.en_to_ru_write
+			for wrd, stat in self.loaded_words(inv_type_pr):
+				if stat.get_total_answer() > 0 and wrd not in (learned_words+studied_words):
+					studied_words.append(wrd)
 					if len(studied_words) == cnt_study_words:
 						break
 
 		# дополняем ни разу не изучаемыми словами
 		if len(studied_words) < cnt_study_words:
-			for word, stat in self.loaded_words(type_pr):
+			for wrd, stat in self.loaded_words(type_pr):
 				if stat.get_total_answer() == 0:
-					studied_words.append(word)
+					studied_words.append(wrd)
 					if len(studied_words) == cnt_study_words:
 						break
 
@@ -157,9 +91,9 @@ class Dict:
 
 	def get_any_word(self):
 		while True:
-			word = random.choice(self.lesson_words)
-			if word.get_rating() > random.random():
-				return word
+			wrd = random.choice(self.lesson_words)
+			if wrd.get_rating() > random.random():
+				return wrd
 
 class Practice:
 	def __init__(self, lesson, word, type_pr):
@@ -183,7 +117,7 @@ class Practice:
 class Lesson:
 	def __init__(self, cfg):
 		random.seed()
-		self.type_pr       = random.choice([en_to_ru_write, ru_to_en_write])
+		self.type_pr       = random.choice([word.en_to_ru_write, word.ru_to_en_write])
 		self.dict          = Dict()
 		self.max_success   = cfg["words_per_lesson"]
 		self.cnt_success   = 0

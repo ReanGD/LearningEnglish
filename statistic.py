@@ -11,6 +11,16 @@ class Statistic:
 		self.last_lesson_date   = None
 		self.last_lesson_result = None
 
+	def __repr__(self):
+		fmt = "Statistic(success_answer = {0}; error_answer={1}; last_lesson_date={2}; last_lesson_result={3})"
+		return fmt.format(self.success_answer, self.error_answer, self.last_lesson_date, self.last_lesson_result)
+
+	def __eq__(self, other):
+		return	self.success_answer == other.success_answer and \
+				self.error_answer == other.error_answer and \
+				self.last_lesson_date == other.last_lesson_date and \
+				self.last_lesson_result == other.last_lesson_result
+
 	def get_total_answer(self):
 		return self.success_answer+self.error_answer
 
@@ -59,9 +69,9 @@ class Statistic:
 		return [self.success_answer, self.error_answer, self.last_lesson_date, self.last_lesson_result]
 
 	def unpack(self, statistic):
-		self.success_answer, self.error_answer, self.last_lesson_date, self.last_lesson_result = statistic
+		self.success_answer, self.error_answer, self.last_lesson_date, self.last_lesson_result = statistic	
 
-class StatisticCase(unittest.TestCase):
+class StatisticTestCase(unittest.TestCase):
 	def setUp(self):
 		self.stat = Statistic()
 
@@ -69,7 +79,11 @@ class StatisticCase(unittest.TestCase):
 		self.assertEqual(self.stat.success_answer,        0)
 		self.assertEqual(self.stat.error_answer,          0)
 		self.assertEqual(self.stat.last_lesson_date,      None)
-		self.assertEqual(self.stat.last_lesson_result,    None)		
+		self.assertEqual(self.stat.last_lesson_result,    None)
+
+	def test_eq(self):
+		other = Statistic()
+		self.assertEqual(self.stat, other)
 
 	def test_get_total_answer(self):
 		self.assertEqual(self.stat.get_total_answer(), 0)
@@ -141,8 +155,8 @@ class StatisticCase(unittest.TestCase):
 		self.assertEqual(self.stat.pack(), [0, 0, None, None])
 		statistic = (1, 2, "01.02.2010", False)
 		self.stat.unpack(statistic)
-		self.assertEqual(self.stat.pack(), list(statistic))		
+		self.assertEqual(self.stat.pack(), list(statistic))
 
 if __name__=="__main__":
-	suite = unittest.TestLoader().loadTestsFromTestCase(StatisticCase)
+	suite = unittest.TestLoader().loadTestsFromTestCase(StatisticTestCase)
 	unittest.TextTestRunner(verbosity=2).run(suite)
