@@ -1,67 +1,15 @@
 # -*- coding: utf-8 -*-
 
 import re
-import math
 import json
 import random
 import datetime
 import os,os.path
+import statistic
 import GUI
 
 en_to_ru_write = 0
 ru_to_en_write = 1
-
-class Statistic:
-	def __init__(self):
-		self.success_answer     = 0
-		self.error_answer       = 0
-		self.last_lesson_date   = None
-		self.last_lesson_result = None
-
-	def get_total_answer(self):
-		return self.success_answer+self.error_answer
-
-	def get_success_persent(self):
-		total = self.get_total_answer()
-		if total > 0:
-			return float(self.success_answer)/total*100.0
-		else:
-			return 0.0
-
-	def calc_rating(self, min_percent, min_success_cnt):
-		pers  = self.get_success_persent()
-		total = self.get_total_answer()
-		
-		rating = 100.0 - pers
-		# для изученных слов уменьшаем рейтинг
-		if pers >= min_percent and total >= min_success_cnt:
-			rating /= 3.0
-		# чем чаще слово повторяли, тем меньше рейтинг
-		rating *= math.exp(-total*0.07)
-		# если последний ответ был неправильным увеличиваем рейтинг
-		if self.last_lesson_result == False:
-			rating *= 1.5
-		# чем дольше слово не повторяли, тем выше рейтинг
-		days = 0
-		if self.last_lesson_date != None:
-			days = (datetime.date.today() - datetime.datetime.strptime(self.last_lesson_date, "%Y.%m.%d").date()).days
-		rating *= math.log10(days+1.0)+1.0
-
-		return rating
-
-	def update(self, is_success, dt):
-		self.last_lesson_date   = dt
-		self.last_lesson_result = is_success
-		if is_success:
-			self.success_answer += 1
-		else:
-			self.error_answer += 1
-
-	def unpack(self, statistic):
-		self.success_answer, self.error_answer, self.last_lesson_date, self.last_lesson_result = statistic
-
-	def pack(self):
-		return [self.success_answer, self.error_answer, self.last_lesson_date, self.last_lesson_result]
 
 class Word:
 	def __init__(self):
@@ -70,7 +18,7 @@ class Word:
 		self.ru_word		= ""
 		self.ru_word_list	= []
 		self.rating			= 0
-		self.stat 			= {en_to_ru_write : Statistic(), ru_to_en_write : Statistic()}
+		self.stat 			= {en_to_ru_write : statistic.Statistic(), ru_to_en_write : statistic.Statistic()}
 
 	def add_value(self, en_word, transcription, ru_word):
 		if self.en_word == "":
@@ -117,7 +65,7 @@ class Word:
 		for it in statistic:
 			it_int = int(it)
 			if it_int not in self.stat.keys():
-				self.stat[it_int] = Statistic()
+				self.stat[it_int] = statistic.Statistic()
 			self.stat[it_int].unpack(statistic[it])
 
 	def pack(self):
@@ -273,7 +221,7 @@ class Lesson:
 		return self.max_success == self.cnt_success
 
 class App:
-	def __init__(self):		
+	def __init__(self):
 		self.win = GUI.MainWindow(self.get_next_practice, self.end_lesson)
 		self.win.init_window()
 		self.new_lesson()
