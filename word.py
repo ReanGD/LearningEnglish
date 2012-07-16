@@ -7,7 +7,8 @@ import statistic
 en_to_ru_write = 0
 ru_to_en_write = 1
 
-reg_cmnt = re.compile("\(.*?\)")
+reg_cmnt         = re.compile("\(.*?\)")
+reg_no_sign_part = re.compile("\[.*?\]")
 
 class Word:
 	def __init__(self):
@@ -26,8 +27,8 @@ class Word:
 		if self.ru_word != "":
 			ru_word = self.ru_word + "," + ru_word
 		word_list = map(lambda x : x.strip(), ru_word.split(","))
-		self.ru_word = ", ".join(word_list)
-		self.ru_word_list = map(lambda x : reg_cmnt.sub("", x.lower()).strip(), word_list)		
+		self.ru_word = ", ".join(word_list).replace("[","").replace("]","")
+		self.ru_word_list = map(lambda x : reg_no_sign_part.sub(".*?", reg_cmnt.sub("", x.lower()).strip()), word_list)
 
 	def set_rating(self, value):
 		self.rating = value
@@ -41,10 +42,16 @@ class Word:
 		else:
 			return self.ru_word, ""
 
+	def check_ru(self, answer):
+		for it in self.ru_word_list:
+			if re.match(it+"\Z", answer) != None:
+				return True
+		return False
+
 	def check(self, answer, type_pr):
 		answer = answer.strip().lower()
 		if type_pr == en_to_ru_write:
-			is_success = (answer in self.ru_word_list)
+			is_success = self.check_ru(answer)
 			return is_success, self.ru_word, ""
 		else:
 			is_success = (answer == self.en_word.strip().lower())
@@ -133,7 +140,16 @@ class WordTestCase(unittest.TestCase):
 		self.assertEqual(self.word.en_word,       en_word)
 		self.assertEqual(self.word.transcription, self.hello_tr_out)
 		self.assertEqual(self.word.ru_word,       ru_word0+" "+ru_word0_cmnt+", "+ru_word1)
-		self.assertEqual(self.word.ru_word_list,  [ru_word0, ru_word1])		
+		self.assertEqual(self.word.ru_word_list,  [ru_word0, ru_word1])
+
+	def test_add_value_no_sign_part(self):
+		en_word       = "Hello"
+		
+		self.word.add_value("  "+en_word+"  ", "  "+self.hello_tr+"  ", "привет[ствие],ок[лик]ат[ь]")
+		self.assertEqual(self.word.en_word,       en_word)
+		self.assertEqual(self.word.transcription, self.hello_tr_out)
+		self.assertEqual(self.word.ru_word,       "приветствие, окликать")
+		self.assertEqual(self.word.ru_word_list,  ["привет.*?", "ок.*?ат.*?"])
 
 	def test_rating(self):
 		rating = 51.879
@@ -150,7 +166,7 @@ class WordTestCase(unittest.TestCase):
 	def test_check(self):
 		en_word       = "Hello"
 		ru_word0      = "привет"
-		ru_word1      = "алло"		
+		ru_word1      = "алло"
 		self.word.add_value(en_word, self.hello_tr, ru_word0+","+ru_word1)
 
 		self.assertEqual(self.word.check("  "+ru_word0.upper()+"  ", en_to_ru_write), (True, ru_word0+", "+ru_word1, ""))
@@ -159,6 +175,29 @@ class WordTestCase(unittest.TestCase):
 
 		self.assertEqual(self.word.check("  "+en_word.upper()+"  ", ru_to_en_write), (True, en_word, self.hello_tr_out))
 		self.assertEqual(self.word.check("error_answer", ru_to_en_write), (False, en_word, self.hello_tr_out))
+
+	def test_check_cmnt(self):
+		en_word       = "Hello"
+		ru_word0      = "привет"
+		ru_word0_cmnt = " (Здоровается)"
+		ru_word1      = "алло"
+		self.word.add_value(en_word, self.hello_tr, ru_word0+ru_word0_cmnt+","+ru_word1)
+
+		self.assertEqual(self.word.check("  "+ru_word0.upper()+"  ", en_to_ru_write), (True, ru_word0+ru_word0_cmnt+", "+ru_word1, ""))
+		self.assertEqual(self.word.check("  "+ru_word1.upper()+"  ", en_to_ru_write), (True, ru_word0+ru_word0_cmnt+", "+ru_word1, ""))
+		self.assertEqual(self.word.check("error_answer", en_to_ru_write), (False, ru_word0+ru_word0_cmnt+", "+ru_word1, ""))
+
+	def test_check_no_sign_part(self):
+		en_word   = "Hello"
+		return_ru = "приветствие, окликать"
+		self.word.add_value("  "+en_word+"  ", "  "+self.hello_tr+"  ", "привет[ствие],ок[лик]ат[ь]")
+
+		self.assertEqual(self.word.check("привет", en_to_ru_write), (True, return_ru, ""))
+		self.assertEqual(self.word.check("приветaddtext", en_to_ru_write), (True, return_ru, ""))
+		self.assertEqual(self.word.check("окат", en_to_ru_write), (True, return_ru, ""))
+		self.assertEqual(self.word.check("окликaddатadd]", en_to_ru_write), (True, return_ru, ""))
+		self.assertEqual(self.word.check("привит", en_to_ru_write), (False, return_ru, ""))
+		self.assertEqual(self.word.check("окар", en_to_ru_write), (False, return_ru, ""))
 
 	def test_is_load(self):
 		self.assertEqual(self.word.is_load(), False)
