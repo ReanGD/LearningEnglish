@@ -12,6 +12,9 @@ _str_dict = {
 	,"correct"           : "Верно"
 	,"incorrect"         : "Неверно"
 	,"of"                : "из"
+	,"learn"             : "учить"
+	,"learned"           : "выучено"
+	,"study"             : "изучаем"
 }
 
 clr_stat_frame   = "#E9F6FE"
@@ -22,6 +25,95 @@ clr_error        = "#FC0039"
 
 def _(name):
 	return _str_dict[name]
+
+class AutoScrollbar(Scrollbar):
+	def set(self, lo, hi):
+		if float(lo) <= 0.0 and float(hi) >= 1.0:
+			self.tk.call("grid", "remove", self)
+		else:
+			self.grid()
+		Scrollbar.set(self, lo, hi)
+
+class ScrollCanvas(Canvas):
+	def __init__(self, parent):
+		self.delta = 1
+		
+		vscrollbar = AutoScrollbar(parent)
+		Canvas.__init__(self, parent, yscrollcommand=vscrollbar.set)
+		vscrollbar.config(command=self.yview)
+		
+		vscrollbar.grid(row=0, column=1, sticky=N+S)
+		self.grid(row=0, column=0, sticky=N+S+E+W)
+		
+		parent.grid_rowconfigure(0, weight=1)
+		parent.grid_columnconfigure(0, weight=1)
+
+		parent.bind("<MouseWheel>", self.on_mouse_wheel)
+		parent.bind('<Button-4>', self.scroll_up)
+		parent.bind('<Button-5>', self.scroll_down)
+
+	def scroll_up(self, event=None):
+		self.yview("scroll", -self.delta, 'units')
+
+	def scroll_down(self, event=None):
+		self.yview("scroll", self.delta, 'units')
+
+	def on_mouse_wheel(self, event):
+		if event.delta > 0:
+			self.scroll_up(event)
+		else:
+			self.scroll_down(event)
+
+class StatisticDialog(Toplevel):
+	def __init__(self, parent, dictionary):		
+		Toplevel.__init__(self, parent)
+		
+		self.transient(parent)
+		self.parent = parent
+
+		self.body(dictionary)
+
+		self.wait_visibility() # window needs to be visible for the grab
+		self.grab_set()
+
+		width  = 800
+		height = 600
+		x = (self.winfo_screenwidth() - width) / 2
+		y = (self.winfo_screenheight() - height) / 2
+		self.wm_geometry("%dx%d+%d+%d" % (width, height, x, y))
+		self.resizable(False, False)
+		self.focus_set()
+		self.protocol("WM_DELETE_WINDOW", self.on_destroy)
+		self.wait_window(self)
+
+	def on_destroy(self, event=None):
+		self.parent.focus_set()
+		self.destroy()
+
+	def body(self, dictionary):
+		canvas = ScrollCanvas(self)
+		
+		fnt = Font(family="Arial", size=9)
+		
+		word_len = fnt.measure("W"*10) 
+		cnt_len  = fnt.measure("9999")
+		prs_len  = fnt.measure("100.0%")
+		len_text = [word_len, word_len, word_len, cnt_len, cnt_len, prs_len, cnt_len, cnt_len, prs_len]
+
+		for stat in dictionary.words_statistic():
+			for it in range(0, 3):
+				if stat[it] > 9:
+					len_text[it] = max(len_text[it], fnt.measure(stat[it]))
+		sm = 0
+		for it in range(0, 9):
+			len_text[it], sm = sm, sm+len_text[it]+20
+
+		h = fnt.metrics("linespace")
+		for i, stat in enumerate(dictionary.words_statistic()):
+			for it in range(0, 9):
+				canvas.create_text(len_text[it], (i+1)*h, text=stat[it], anchor=W, font=fnt)
+
+		canvas.config(scrollregion=canvas.bbox("all"))
 
 class CloseDialog(tkSimpleDialog.Dialog):
 	def body(self, master):
@@ -35,8 +127,9 @@ class CloseDialog(tkSimpleDialog.Dialog):
 		self.result = self.var.get()
 
 class MainWindow(Tk):
-	def __init__(self, next_word_callback, end_lesson_callback):
+	def __init__(self, get_dict_callback, next_word_callback, end_lesson_callback):
 		Tk.__init__(self)
+		self.get_dict_callback   = get_dict_callback
 		self.next_word_callback  = next_word_callback
 		self.end_lesson_callback = end_lesson_callback
 		self.show_answer         = False
@@ -61,11 +154,16 @@ class MainWindow(Tk):
 
 		Label(frm_stat, font=fnt_stat, bg=clr_stat_frame, text=_("correct_incorrect")).pack(side="left")
 
+		img = PhotoImage(file="info.gif")
+		bt = Button(frm_stat, image=img, command=self.show_statistic)
+		bt.image = img
+		bt.pack(side="right")
+
 		self.lbl_stat_error = Label(frm_stat, font=fnt_stat, bg=clr_stat_frame, fg=clr_error, borderwidth=0)
 		self.lbl_stat_error.pack(side="right")
 
 		self.lbl_stat_success = Label(frm_stat, font=fnt_stat, bg=clr_stat_frame, fg=clr_success, borderwidth=0)
-		self.lbl_stat_success.pack(side="right")
+		self.lbl_stat_success.pack(side="right")		
 
 		########################################################
 
@@ -123,6 +221,9 @@ class MainWindow(Tk):
 			self.quit()
 		elif dlg.result == 0:
 			self.end_lesson_callback()
+
+	def show_statistic(self):
+		StatisticDialog(self, self.get_dict_callback())
 
 	def set_word(self, practice):
 		self.practice = practice

@@ -31,6 +31,12 @@ class Statistic:
 		else:
 			return 0.0
 
+	def get_show_statictic(self):
+		pers           = str(round(self.get_success_persent(), 2))+'%'
+		success_answer = str(int(self.success_answer))
+		error_answer   = str(int(self.error_answer))
+		return success_answer, error_answer, pers
+
 	def calc_rating(self, min_percent, min_success_cnt):
 		pers  = self.get_success_persent()
 		total = self.get_total_answer()

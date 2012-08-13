@@ -5,8 +5,9 @@ import json
 import random
 import datetime
 import os,os.path
-import word
 import GUI
+import word
+import config
 
 class Dict:
 	def __init__(self):
@@ -37,6 +38,13 @@ class Dict:
 
 	def loaded_words(self, type_pr):
 		return [(it, it.get_stat(type_pr)) for it in self.words.values() if it.is_load()]
+
+	def words_statistic(self):
+		stat = []
+		for it in self.words.values():
+			if it.is_load():
+				stat.append(it.word_statictic())
+		return stat
 
 	def words_for_lesson(self, cnt_study_words, min_percent, min_success_cnt, type_pr):
 		learned_words = []
@@ -71,7 +79,10 @@ class Dict:
 		return learned_words + studied_words
 
 	def calc_word_scores(self, cnt_study_words, min_percent, min_success_cnt, type_pr):
-		self.lesson_words = self.words_for_lesson(cnt_study_words, min_percent, min_success_cnt, type_pr)
+		self.lesson_words    = self.words_for_lesson(cnt_study_words, min_percent, min_success_cnt, type_pr)
+		self.cnt_study_words = cnt_study_words
+		self.min_percent     = min_percent
+		self.min_success_cnt = min_success_cnt
 		
 		for it in self.lesson_words:
 			rating = it.get_stat(type_pr).calc_rating(min_percent, min_success_cnt)
@@ -128,6 +139,9 @@ class Lesson:
 		self.dict.reload_stat(cfg["path_to_stat"])
 		self.dict.calc_word_scores(cfg["CntStudyWords"], cfg["MinPercent"], cfg["MinSuccessCnt"], self.type_pr)
 
+	def get_dict(self):
+		return self.dict
+
 	def update_stat(self, is_success):
 		if is_success:
 			self.cnt_success += 1
@@ -156,28 +170,16 @@ class Lesson:
 
 class App:
 	def __init__(self):
-		self.win = GUI.MainWindow(self.get_next_practice, self.end_lesson)
+		self.cfg = config.Config("config.json")
+		self.win = GUI.MainWindow(self.get_dict, self.get_next_practice, self.end_lesson)
 		self.win.init_window()
 		self.new_lesson()
-		self.win.mainloop()		
-
-	def load_config(self, path):
-		config_txt = open(path).read()
-		config_txt = re.compile(r"/\*.*?\*/", re.DOTALL).sub("", config_txt) # remove comments
-		cfg = json.loads(config_txt)
-		cfg["path_to_dict"]     = cfg.get("path_to_dict","dict.json")
-		cfg["path_to_stat"]     = cfg.get("path_to_stat","statistic.json")
-		cfg["words_per_lesson"] = int(cfg.get("words_per_lesson",5))
-		cfg["CntStudyWords"]    = int(cfg.get("CntStudyWords",50))
-		cfg["MinPercent"]       = float(cfg.get("MinPercent",97.0))
-		cfg["MinSuccessCnt"]    = int(cfg.get("MinSuccessCnt",10))
-		cfg["retry_time"]       = int(cfg.get("retry_time",1800))
-		return cfg
+		self.win.mainloop()
 
 	def new_lesson(self):		
-		cfg             = self.load_config("config.json")
-		self.retry_time = cfg["retry_time"]
-		self.lesson     = Lesson(cfg)
+		cfg_dict        = self.cfg.reload()
+		self.retry_time = cfg_dict["retry_time"]
+		self.lesson     = Lesson(cfg_dict)
 		self.get_next_practice()
 		self.win.show()
 
@@ -185,6 +187,9 @@ class App:
 		self.lesson.end_lesson()
 		self.win.hide()
 		self.win.after(self.retry_time*1000, self.new_lesson)
+
+	def get_dict(self):
+		return self.lesson.get_dict()
 
 	def get_next_practice(self):
 		if self.lesson.is_end_lesson():
