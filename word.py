@@ -10,6 +10,14 @@ ru_to_en_write = 1
 reg_cmnt         = re.compile("\(.*?\)")
 reg_no_sign_part = re.compile("\[.*?\]")
 
+class WordInfo:
+	def __init__(self, word, transcription):
+		self.word          = word
+		self.transcription = transcription
+
+	def __eq__(self, other):
+		return self.word == other.word and self.transcription == other.transcription
+
 class Word:
 	def __init__(self):
 		self.en_word		= ""
@@ -38,9 +46,9 @@ class Word:
 
 	def source_data(self, type_pr):
 		if type_pr == en_to_ru_write:
-			return self.en_word, self.transcription
+			return WordInfo(self.en_word, self.transcription)
 		else:
-			return self.ru_word, ""
+			return WordInfo(self.ru_word, "")
 
 	def check_ru(self, answer):
 		for it in self.ru_word_list:
@@ -52,10 +60,10 @@ class Word:
 		answer = answer.strip().lower()
 		if type_pr == en_to_ru_write:
 			is_success = self.check_ru(answer)
-			return is_success, self.ru_word, ""
+			return is_success, WordInfo(self.ru_word, "")
 		else:
 			is_success = (answer == self.en_word.strip().lower())
-			return is_success, self.en_word, self.transcription
+			return is_success, WordInfo(self.en_word, self.transcription)
 
 	def update_stat(self, is_success, dt, type_pr):
 		self.stat[type_pr].update(is_success, dt)
@@ -167,8 +175,8 @@ class WordTestCase(unittest.TestCase):
 		en_word       = "Hello"
 		ru_word       = "привет"
 		self.word.add_value(en_word, self.hello_tr, ru_word)
-		self.assertEqual(self.word.source_data(en_to_ru_write), (en_word, self.hello_tr_out))
-		self.assertEqual(self.word.source_data(ru_to_en_write), (ru_word, ""))
+		self.assertEqual(self.word.source_data(en_to_ru_write), WordInfo(en_word, self.hello_tr_out))
+		self.assertEqual(self.word.source_data(ru_to_en_write), WordInfo(ru_word, ""))
 
 	def test_check(self):
 		en_word       = "Hello"
@@ -176,12 +184,14 @@ class WordTestCase(unittest.TestCase):
 		ru_word1      = "алло"
 		self.word.add_value(en_word, self.hello_tr, ru_word0+","+ru_word1)
 
-		self.assertEqual(self.word.check("  "+ru_word0.upper()+"  ", en_to_ru_write), (True, ru_word0+", "+ru_word1, ""))
-		self.assertEqual(self.word.check("  "+ru_word1.upper()+"  ", en_to_ru_write), (True, ru_word0+", "+ru_word1, ""))
-		self.assertEqual(self.word.check("error_answer", en_to_ru_write), (False, ru_word0+", "+ru_word1, ""))
+		ru_ans = WordInfo(ru_word0+", "+ru_word1, "")
+		self.assertEqual(self.word.check("  "+ru_word0.upper()+"  ", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check("  "+ru_word1.upper()+"  ", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check("error_answer", en_to_ru_write), (False, ru_ans))
 
-		self.assertEqual(self.word.check("  "+en_word.upper()+"  ", ru_to_en_write), (True, en_word, self.hello_tr_out))
-		self.assertEqual(self.word.check("error_answer", ru_to_en_write), (False, en_word, self.hello_tr_out))
+		en_ans = WordInfo(en_word, self.hello_tr_out)
+		self.assertEqual(self.word.check("  "+en_word.upper()+"  ", ru_to_en_write), (True, en_ans))
+		self.assertEqual(self.word.check("error_answer", ru_to_en_write), (False, en_ans))
 
 	def test_check_cmnt(self):
 		en_word       = "Hello"
@@ -190,21 +200,23 @@ class WordTestCase(unittest.TestCase):
 		ru_word1      = "алло"
 		self.word.add_value(en_word, self.hello_tr, ru_word0+ru_word0_cmnt+","+ru_word1)
 
-		self.assertEqual(self.word.check("  "+ru_word0.upper()+"  ", en_to_ru_write), (True, ru_word0+ru_word0_cmnt+", "+ru_word1, ""))
-		self.assertEqual(self.word.check("  "+ru_word1.upper()+"  ", en_to_ru_write), (True, ru_word0+ru_word0_cmnt+", "+ru_word1, ""))
-		self.assertEqual(self.word.check("error_answer", en_to_ru_write), (False, ru_word0+ru_word0_cmnt+", "+ru_word1, ""))
+		ru_ans = WordInfo(ru_word0+ru_word0_cmnt+", "+ru_word1, "")
+		self.assertEqual(self.word.check("  "+ru_word0.upper()+"  ", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check("  "+ru_word1.upper()+"  ", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check("error_answer", en_to_ru_write), (False, ru_ans))
 
 	def test_check_no_sign_part(self):
 		en_word   = "Hello"
 		return_ru = "приветствие, окликать"
 		self.word.add_value("  "+en_word+"  ", "  "+self.hello_tr+"  ", "привет[ствие],ок[лик]ат[ь]")
 
-		self.assertEqual(self.word.check("привет", en_to_ru_write), (True, return_ru, ""))
-		self.assertEqual(self.word.check("приветaddtext", en_to_ru_write), (True, return_ru, ""))
-		self.assertEqual(self.word.check("окат", en_to_ru_write), (True, return_ru, ""))
-		self.assertEqual(self.word.check("окликaddатadd]", en_to_ru_write), (True, return_ru, ""))
-		self.assertEqual(self.word.check("привит", en_to_ru_write), (False, return_ru, ""))
-		self.assertEqual(self.word.check("окар", en_to_ru_write), (False, return_ru, ""))
+		ru_ans = WordInfo(return_ru, "")
+		self.assertEqual(self.word.check("привет", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check("приветaddtext", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check("окат", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check("окликaddатadd]", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check("привит", en_to_ru_write), (False, ru_ans))
+		self.assertEqual(self.word.check("окар", en_to_ru_write), (False, ru_ans))
 
 	def test_is_load(self):
 		self.assertEqual(self.word.is_load(), False)

@@ -7,23 +7,27 @@ import unittest
 
 class Config:
 	def __init__(self, path):
-		self.path = path
+		self.path     = path
+		self.cfg_dict = {}
 
 	def reload(self):
 		if os.path.exists(self.path):
 			txt = open(self.path).read()
 			txt = re.compile(r"/\*.*?\*/", re.DOTALL).sub("", txt) # remove comments
-			cfg_dict = json.loads(txt)
+			self.cfg_dict = json.loads(txt)
 		else:
-			cfg_dict = {}
-		cfg_dict["path_to_dict"]     = cfg_dict.get("path_to_dict","dict.json")
-		cfg_dict["path_to_stat"]     = cfg_dict.get("path_to_stat","statistic.json")
-		cfg_dict["words_per_lesson"] = int(cfg_dict.get("words_per_lesson",5))
-		cfg_dict["CntStudyWords"]    = int(cfg_dict.get("CntStudyWords",50))
-		cfg_dict["MinPercent"]       = float(cfg_dict.get("MinPercent",97.0))
-		cfg_dict["MinSuccessCnt"]    = int(cfg_dict.get("MinSuccessCnt",10))
-		cfg_dict["retry_time"]       = int(cfg_dict.get("retry_time",1800))
-		return cfg_dict
+			self.cfg_dict = {}
+		self.cfg_dict["path_to_dict"]     = self.cfg_dict.get("path_to_dict","dict.json")
+		self.cfg_dict["path_to_stat"]     = self.cfg_dict.get("path_to_stat","statistic.json")
+		self.cfg_dict["words_per_lesson"] = int(self.cfg_dict.get("words_per_lesson",5))
+		self.cfg_dict["CntStudyWords"]    = int(self.cfg_dict.get("CntStudyWords",50))
+		self.cfg_dict["MinPercent"]       = float(self.cfg_dict.get("MinPercent",97.0))
+		self.cfg_dict["MinSuccessCnt"]    = int(self.cfg_dict.get("MinSuccessCnt",10))
+		self.cfg_dict["retry_time"]       = int(self.cfg_dict.get("retry_time",1800))
+		return self.cfg_dict
+
+	def get_dict(self):
+		return self.cfg_dict
 
 class ConfigTestCase(unittest.TestCase):
 

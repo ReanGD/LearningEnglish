@@ -127,18 +127,15 @@ class CloseDialog(tkSimpleDialog.Dialog):
 		self.result = self.var.get()
 
 class MainWindow(Tk):
-	def __init__(self, get_dict_callback, next_word_callback, end_lesson_callback):
+	def __init__(self):
 		Tk.__init__(self)
-		self.get_dict_callback   = get_dict_callback
-		self.next_word_callback  = next_word_callback
-		self.end_lesson_callback = end_lesson_callback
 		self.show_answer         = False
-		self.practice            = None
 		self.lbl_word            = None
 		self.lbl_transcription   = None
 		self.lbl_result_msg      = None
 		self.lbl_correct_word    = None
 		self.lbl_correct_word_tr = None
+		self.init_window()
 
 	def init_window(self):
 		fnt_stat          = Font(family="Arial", size=9)
@@ -207,6 +204,21 @@ class MainWindow(Tk):
 		self.wm_geometry("+%d+%d" % (x, y))
 		self.protocol("WM_DELETE_WINDOW", self.on_destroy)
 
+	def new_lesson(self):
+		pass
+
+	def end_lesson(self):
+		pass
+
+	def new_practice(self):
+		pass
+
+	def end_practice(self, user_answer):
+		pass
+
+	def get_dict(self):
+		pass
+
 	def show(self):
 		self.deiconify()
 		self.edit_translate.focus()
@@ -217,42 +229,43 @@ class MainWindow(Tk):
 	def on_destroy(self):
 		dlg = CloseDialog(self)
 		if dlg.result == 1:
-			self.end_lesson_callback()
+			self.end_lesson()
 			self.quit()
 		elif dlg.result == 0:
-			self.end_lesson_callback()
+			self.end_lesson()
 
 	def show_statistic(self):
-		StatisticDialog(self, self.get_dict_callback())
+		StatisticDialog(self, self.get_dict())
 
-	def set_word(self, practice):
-		self.practice = practice
-
-		self.lbl_word["text"],  self.lbl_transcription["text"] = practice.source_data()
-		
+	def set_word(self, new_word):
+		self.lbl_word["text"]            = new_word.word
+		self.lbl_transcription["text"]   = new_word.transcription
 		self.lbl_result_msg["text"]      = ""
 		self.lbl_correct_word["text"]    = ""
 		self.lbl_correct_word_tr["text"] = ""
 		self.edit_translate.delete(0, END)
 
-	def set_stat(self, stat):
-		success_cnt = stat[0]
-		max_success = stat[1]
-		error_cnt   = stat[2]
-		self.lbl_stat_success['text'] = "%i %s %i/" % (success_cnt, _("of"), max_success)
-		self.lbl_stat_error['text']   = "%i" % error_cnt
-	
-	def on_check_translate(self, event):
-		self.show_answer = not self.show_answer
-		if not self.show_answer:
-			self.next_word_callback()
-			return
-
-		user_answer = event.widget.get()
-		is_success, self.lbl_correct_word["text"], self.lbl_correct_word_tr["text"] = self.practice.check(user_answer)
+	def set_practice_result(self, is_success, right_answer):
+		self.lbl_correct_word["text"]    = right_answer.word
+		self.lbl_correct_word_tr["text"] = right_answer.transcription
 		if is_success:
 			self.lbl_result_msg["text"] = _("correct")
 			self.lbl_result_msg["fg"]   = clr_success
 		else:
 			self.lbl_result_msg["text"] = _("incorrect")
 			self.lbl_result_msg["fg"]   = clr_error
+
+	def set_stat(self, stat):
+		success_cnt = stat[0]
+		max_success = stat[1]
+		error_cnt   = stat[2]
+		self.lbl_stat_success["text"] = "%i %s %i/" % (success_cnt, _("of"), max_success)
+		self.lbl_stat_error["text"]   = "%i" % error_cnt
+	
+	def on_check_translate(self, event):
+		self.show_answer = not self.show_answer
+		if not self.show_answer:
+			self.new_practice()
+		else:
+			user_answer = event.widget.get()
+			self.end_practice(user_answer)
