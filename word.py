@@ -68,18 +68,14 @@ class Word:
 	def update_stat(self, is_success, dt, type_pr):
 		self.stat[type_pr].update(is_success, dt)
 
+	def get_show_info(self):
+		return (self.en_word, self.transcription, self.ru_word)
+
 	def is_load(self):
 		return self.transcription != ""
 
 	def get_stat(self, type_pr):
 		return self.stat[type_pr]
-
-	def word_statictic(self):
-		en_to_ru_stat = self.get_stat(en_to_ru_write).get_show_statictic()
-		ru_to_en_stat = self.get_stat(ru_to_en_write).get_show_statictic()
-		return (self.en_word, self.transcription, self.ru_word,
-				en_to_ru_stat[0], en_to_ru_stat[1], en_to_ru_stat[2],
-				ru_to_en_stat[0], ru_to_en_stat[1], ru_to_en_stat[2])
 
 	def unpack(self, statistic):
 		for it in statistic:

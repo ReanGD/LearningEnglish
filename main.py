@@ -14,7 +14,7 @@ class App(GUI.MainWindow):
 		self.new_lesson()
 		self.mainloop()
 
-	def new_lesson(self):		
+	def new_lesson(self):
 		cfg_dict        = self.cfg.reload()
 		self.lesson     = lesson.Lesson(cfg_dict)
 		self.new_practice()
@@ -39,8 +39,10 @@ class App(GUI.MainWindow):
 		is_success, right_answer = self.practice.check(user_answer)
 		self.set_practice_result(is_success, right_answer)
 
-	def get_dict(self):
-		return self.lesson.get_dict()
+	def global_statistic(self):
+		min_percent     = self.cfg.get_dict()["MinPercent"]
+		min_success_cnt = self.cfg.get_dict()["MinSuccessCnt"]
+		return self.lesson.get_dict().global_statistic(min_percent, min_success_cnt)
 
 def run():
 	import singleton

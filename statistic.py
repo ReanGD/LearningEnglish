@@ -24,18 +24,15 @@ class Statistic:
 	def get_total_answer(self):
 		return self.success_answer+self.error_answer
 
+	def get_success_answer(self):
+		return self.success_answer
+
 	def get_success_persent(self):
 		total = self.get_total_answer()
 		if total > 0:
 			return float(self.success_answer)/total*100.0
 		else:
 			return 0.0
-
-	def get_show_statictic(self):
-		pers           = str(round(self.get_success_persent(), 2))+'%'
-		success_answer = str(int(self.success_answer))
-		error_answer   = str(int(self.error_answer))
-		return success_answer, error_answer, pers
 
 	def calc_rating(self, min_percent, min_success_cnt):
 		pers  = self.get_success_persent()

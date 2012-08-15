@@ -9,12 +9,22 @@ _str_dict = {
 	,"end_program"       : "Закрыть программу"
 	,"correct_incorrect" : "Верно/Неверно"
 	,"learning_english"  : "Изучаем английский"
+	,"statistic_title"   : "Статистика ответов"
 	,"correct"           : "Верно"
 	,"incorrect"         : "Неверно"
 	,"of"                : "из"
 	,"learn"             : "учить"
 	,"learned"           : "выучено"
 	,"study"             : "изучаем"
+	,"ru_en_btn"         : "Ru->En"
+	,"en_ru_btn"         : "En->Ru"
+	,"clm_word"          : "Слово"
+	,"clm_transcription" : "Транскрипция"
+	,"clm_translate"     : "Перевод"
+	,"clm_cnt_suc"       : "Верных"
+	,"clm_cnt_err"       : "Не верных"
+	,"clm_pers_suc"      : "% верных"
+	,"clm_state"         : "Статус"
 }
 
 clr_stat_frame   = "#E9F6FE"
@@ -22,6 +32,8 @@ clr_word_frame   = "#FFFFE0"
 clr_answer_frame = "#E9F6FE"
 clr_success      = "#348000"
 clr_error        = "#FC0039"
+clr_black        = "#000000"
+clr_stat         = ["#7B7B00", "#007B00", "#7B7B7B"]
 
 def _(name):
 	return _str_dict[name]
@@ -38,15 +50,9 @@ class ScrollCanvas(Canvas):
 	def __init__(self, parent):
 		self.delta = 1
 		
-		vscrollbar = AutoScrollbar(parent)
-		Canvas.__init__(self, parent, yscrollcommand=vscrollbar.set)
-		vscrollbar.config(command=self.yview)
-		
-		vscrollbar.grid(row=0, column=1, sticky=N+S)
-		self.grid(row=0, column=0, sticky=N+S+E+W)
-		
-		parent.grid_rowconfigure(0, weight=1)
-		parent.grid_columnconfigure(0, weight=1)
+		self.vscrollbar = AutoScrollbar(parent)
+		Canvas.__init__(self, parent, yscrollcommand=self.vscrollbar.set)
+		self.vscrollbar.config(command=self.yview)
 
 		parent.bind("<MouseWheel>", self.on_mouse_wheel)
 		parent.bind('<Button-4>', self.scroll_up)
@@ -64,14 +70,19 @@ class ScrollCanvas(Canvas):
 		else:
 			self.scroll_down(event)
 
+	def grid(self, row, column, columnspan):
+		self.vscrollbar.grid(row=row, column=column+columnspan, sticky=N+S)
+		Canvas.grid(self,row=row, column=column, columnspan=columnspan, sticky=N+S+E+W)		
+
 class StatisticDialog(Toplevel):
-	def __init__(self, parent, dictionary):		
+	def __init__(self, parent, statistic):		
 		Toplevel.__init__(self, parent)
 		
 		self.transient(parent)
-		self.parent = parent
+		self.parent    = parent
+		self.statistic = statistic
 
-		self.body(dictionary)
+		self.body()
 
 		self.wait_visibility() # window needs to be visible for the grab
 		self.grab_set()
@@ -80,6 +91,7 @@ class StatisticDialog(Toplevel):
 		height = 600
 		x = (self.winfo_screenwidth() - width) / 2
 		y = (self.winfo_screenheight() - height) / 2
+		self.title(_("statistic_title"))
 		self.wm_geometry("%dx%d+%d+%d" % (width, height, x, y))
 		self.resizable(False, False)
 		self.focus_set()
@@ -90,30 +102,82 @@ class StatisticDialog(Toplevel):
 		self.parent.focus_set()
 		self.destroy()
 
-	def body(self, dictionary):
-		canvas = ScrollCanvas(self)
-		
-		fnt = Font(family="Arial", size=9)
-		
-		word_len = fnt.measure("W"*10) 
-		cnt_len  = fnt.measure("9999")
-		prs_len  = fnt.measure("100.0%")
-		len_text = [word_len, word_len, word_len, cnt_len, cnt_len, prs_len, cnt_len, cnt_len, prs_len]
+	def get_header_text(self):
+		return (_("clm_word"), _("clm_transcription"), _("clm_translate"), _("clm_cnt_suc"), _("clm_cnt_err"), _("clm_pers_suc"), _("clm_state"))
 
-		for stat in dictionary.words_statistic():
+	def body(self):
+		fnt = Font(family="Arial", size=10)
+		self.tbl_fnt = fnt
+		
+		word_len      = max(fnt.measure(_("clm_word")), fnt.measure(_("clm_transcription")), fnt.measure(_("clm_translate")))
+		cnt_len       = max(fnt.measure("9999"), fnt.measure(_("clm_cnt_suc")), fnt.measure(_("clm_cnt_err")))
+		prs_len       = max(fnt.measure("100.0%"), fnt.measure(_("clm_pers_suc")))
+		state_len     = max(fnt.measure(_("learn")), fnt.measure(_("learned")), fnt.measure(_("study")), fnt.measure(_("clm_state")))
+		self.len_clmn = [word_len, word_len, word_len, cnt_len, cnt_len, prs_len, state_len]
+
+		# Находим слова с большей длинной, чем умолчательная
+		for stat in self.statistic.get_ru_en():
 			for it in range(0, 3):
-				if stat[it] > 9:
-					len_text[it] = max(len_text[it], fnt.measure(stat[it]))
-		sm = 0
-		for it in range(0, 9):
-			len_text[it], sm = sm, sm+len_text[it]+20
+				if len(stat[it]) > 10:
+					self.len_clmn[it] = max(self.len_clmn[it], fnt.measure(stat[it]))
+		sm = 5
+		for it in range(0, 7):
+			self.len_clmn[it], sm = sm, sm+self.len_clmn[it]+20
 
-		h = fnt.metrics("linespace")
-		for i, stat in enumerate(dictionary.words_statistic()):
-			for it in range(0, 9):
-				canvas.create_text(len_text[it], (i+1)*h, text=stat[it], anchor=W, font=fnt)
+		self.btRuEn = Button(self, text=_("ru_en_btn"), command=self.show_ru_en)
+		self.btRuEn.grid(row=0, column=0, sticky=W+E)
+		self.btEnRu = Button(self, text=_("en_ru_btn"), command=self.show_en_ru)
+		self.btEnRu.grid(row=0, column=1, sticky=W+E)
 
-		canvas.config(scrollregion=canvas.bbox("all"))
+		self.canvas = ScrollCanvas(self)
+		self.canvas.grid(row=1, column=0, columnspan=2)
+
+		self.grid_rowconfigure(1, weight=1)
+		self.grid_columnconfigure(0, weight=1)
+		self.grid_columnconfigure(1, weight=1)		
+
+		self.show_ru_en()
+
+		self.canvas.config(scrollregion=self.canvas.bbox("all"))		
+
+	def draw_stat(self, stat_table):
+		self.canvas.delete(ALL)
+		rc_left   = 5
+		rc_right  = 780
+		rc_top    = 5
+		rc_bottom = rc_top
+
+		h         = self.tbl_fnt.metrics("linespace")
+		half_h    = h//2+1
+		state_str = (_("learned"), _("study"), _("learn"))
+
+		self.canvas.create_line(rc_left, rc_top, rc_right, rc_top)
+		for i, stat in enumerate([self.get_header_text()]+stat_table):
+			rc_bottom += (h+1)
+			self.canvas.create_line(rc_left, rc_bottom, rc_right, rc_bottom)
+			for it in range(0, 7):
+				if it == 6 and i!=0:
+					txt = state_str[stat[it]]
+					clr = clr_stat[stat[it]]
+				else:
+					txt = stat[it]
+					clr = clr_black
+				self.canvas.create_text(rc_left+self.len_clmn[it], rc_bottom-half_h, text=txt, anchor=W, font=self.tbl_fnt, fill=clr)
+
+		for it in range(0, 7):
+			sm = rc_left+self.len_clmn[it]-5
+			self.canvas.create_line(sm, rc_top, sm, rc_bottom)
+		self.canvas.create_line(rc_right, rc_top, rc_right, rc_bottom)		
+
+	def show_ru_en(self):
+		self.btRuEn["relief"] = "sunken"
+		self.btEnRu["relief"] = "raised"
+		self.draw_stat(self.statistic.get_ru_en())
+
+	def show_en_ru(self):
+		self.btRuEn["relief"] = "raised"
+		self.btEnRu["relief"] = "sunken"
+		self.draw_stat(self.statistic.get_en_ru())
 
 class CloseDialog(tkSimpleDialog.Dialog):
 	def body(self, master):
@@ -216,7 +280,7 @@ class MainWindow(Tk):
 	def end_practice(self, user_answer):
 		pass
 
-	def get_dict(self):
+	def global_statistic(self):
 		pass
 
 	def show(self):
@@ -235,7 +299,7 @@ class MainWindow(Tk):
 			self.end_lesson()
 
 	def show_statistic(self):
-		StatisticDialog(self, self.get_dict())
+		StatisticDialog(self, self.global_statistic())
 
 	def set_word(self, new_word):
 		self.lbl_word["text"]            = new_word.word

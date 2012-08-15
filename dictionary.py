@@ -4,6 +4,7 @@ import json
 import random
 import os.path
 import word
+import global_stat
 
 class Dict:
 	def __init__(self):
@@ -35,11 +36,11 @@ class Dict:
 	def loaded_words(self, type_pr):
 		return [(it, it.get_stat(type_pr)) for it in self.words.values() if it.is_load()]
 
-	def words_statistic(self):
-		stat = []
+	def global_statistic(self, min_percent, min_success_cnt):
+		stat = global_stat.GlobalStatistic(min_percent, min_success_cnt)
 		for it in self.words.values():
 			if it.is_load():
-				stat.append(it.word_statictic())
+				stat.add_word(it, it.get_stat(word.en_to_ru_write), it.get_stat(word.ru_to_en_write))
 		return stat
 
 	def words_for_lesson(self, cnt_study_words, min_percent, min_success_cnt, type_pr):
