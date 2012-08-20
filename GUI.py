@@ -12,6 +12,7 @@ _str_dict = {
 	,"statistic_title"   : "Статистика ответов"
 	,"correct"           : "Верно"
 	,"incorrect"         : "Неверно"
+	,"reiterate"         : "Повторим еще раз"
 	,"of"                : "из"
 	,"learn"             : "учить"
 	,"learned"           : "выучено"
@@ -301,10 +302,14 @@ class MainWindow(Tk):
 	def show_statistic(self):
 		StatisticDialog(self, self.global_statistic())
 
-	def set_word(self, new_word):
+	def set_word(self, new_word, is_new):		
+		if is_new:
+			self.lbl_result_msg["text"]  = ""
+		else:
+			self.lbl_result_msg["text"]  = _("reiterate")
+			self.lbl_result_msg["fg"]    = clr_error
 		self.lbl_word["text"]            = new_word.word
 		self.lbl_transcription["text"]   = new_word.transcription
-		self.lbl_result_msg["text"]      = ""
 		self.lbl_correct_word["text"]    = ""
 		self.lbl_correct_word_tr["text"] = ""
 		self.edit_translate.delete(0, END)

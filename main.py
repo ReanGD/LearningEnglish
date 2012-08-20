@@ -17,6 +17,7 @@ class App(GUI.MainWindow):
 	def new_lesson(self):
 		cfg_dict        = self.cfg.reload()
 		self.lesson     = lesson.Lesson(cfg_dict)
+		self.practice   = None
 		self.new_practice()
 		self.show()
 
@@ -30,10 +31,12 @@ class App(GUI.MainWindow):
 		if self.lesson.is_end_lesson():
 			self.end_lesson()
 		else:
-			self.practice = self.lesson.get_next_practice()
-			new_word      = self.practice.source_data()
+			is_new = (self.practice == None or self.practice.is_end())
+			if is_new:
+				self.practice = self.lesson.get_next_practice()
+			new_word = self.practice.source_data()
 			self.set_stat(self.lesson.get_lesson_stat())
-			self.set_word(new_word)
+			self.set_word(new_word, is_new)
 
 	def end_practice(self, user_answer):
 		is_success, right_answer = self.practice.check(user_answer)

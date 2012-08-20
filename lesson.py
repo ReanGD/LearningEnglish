@@ -7,10 +7,11 @@ import dictionary
 
 class Practice:
 	def __init__(self, lesson, word, type_pr):
-		self.lesson  = lesson
-		self.word    = word
-		self.type_pr = type_pr
-		self.result  = None
+		self.lesson    = lesson
+		self.word      = word
+		self.type_pr   = type_pr
+		self.result    = None
+		self.is_answer = False
 
 	def source_data(self):
 		return self.word.source_data(self.type_pr)
@@ -19,10 +20,15 @@ class Practice:
 		if self.result != None:
 			self.word.update_stat(self.result, dt, self.type_pr)
 
+	def is_end(self):
+		return self.is_answer
+
 	def check(self, user_answer):
 		is_success, right_answer = self.word.check(user_answer, self.type_pr)
-		self.result = is_success
-		self.lesson.update_stat(is_success)
+		self.is_answer = is_success
+		if self.result == None:
+			self.result = is_success
+			self.lesson.update_stat(is_success)
 		return is_success, right_answer
 
 class Lesson:
