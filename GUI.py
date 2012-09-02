@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import math
 from tkFont import Font
 from Tkinter import *
 import tkSimpleDialog
@@ -19,6 +20,7 @@ _str_dict = {
 	,"study"             : "изучаем"
 	,"ru_en_btn"         : "Ru->En"
 	,"en_ru_btn"         : "En->Ru"
+	,"clm_num"           : "№"
 	,"clm_word"          : "Слово"
 	,"clm_transcription" : "Транскрипция"
 	,"clm_translate"     : "Перевод"
@@ -49,27 +51,25 @@ class AutoScrollbar(Scrollbar):
 
 class ScrollCanvas(Canvas):
 	def __init__(self, parent):
-		self.delta = 1
+		delta_scr  = 1
+		delta_page = 10
 		
 		self.vscrollbar = AutoScrollbar(parent)
 		Canvas.__init__(self, parent, yscrollcommand=self.vscrollbar.set)
 		self.vscrollbar.config(command=self.yview)
 
-		parent.bind("<MouseWheel>", self.on_mouse_wheel)
-		parent.bind('<Button-4>', self.scroll_up)
-		parent.bind('<Button-5>', self.scroll_down)
+		parent.bind("<MouseWheel>", lambda event=None: self.move(-int(math.copysign(delta_scr, event.delta))))
+		parent.bind('<Button-4>',   lambda event=None: self.move(-delta_scr))
+		parent.bind('<Button-5>',   lambda event=None: self.move(delta_scr))
+		parent.bind('<Prior>',      lambda event=None: self.move(-delta_page))
+		parent.bind('<Next>',       lambda event=None: self.move(delta_page))
+		parent.bind('<Up>',         lambda event=None: self.move(-delta_scr))
+		parent.bind('<Down>',       lambda event=None: self.move(delta_scr))
+		parent.bind('<Home>',       lambda event=None: self.yview_moveto(0))
+		parent.bind('<End>',        lambda event=None: self.yview_moveto(1))
 
-	def scroll_up(self, event=None):
-		self.yview("scroll", -self.delta, 'units')
-
-	def scroll_down(self, event=None):
-		self.yview("scroll", self.delta, 'units')
-
-	def on_mouse_wheel(self, event):
-		if event.delta > 0:
-			self.scroll_up(event)
-		else:
-			self.scroll_down(event)
+	def move(self, delta):
+		self.yview_scroll(delta, 'units')
 
 	def grid(self, row, column, columnspan):
 		self.vscrollbar.grid(row=row, column=column+columnspan, sticky=N+S)
@@ -88,13 +88,12 @@ class StatisticDialog(Toplevel):
 		self.wait_visibility() # window needs to be visible for the grab
 		self.grab_set()
 
-		width  = 800
-		height = 600
+		width  = 850
+		height = 750
 		x = (self.winfo_screenwidth() - width) / 2
 		y = (self.winfo_screenheight() - height) / 2
 		self.title(_("statistic_title"))
 		self.wm_geometry("%dx%d+%d+%d" % (width, height, x, y))
-		self.resizable(False, False)
 		self.focus_set()
 		self.protocol("WM_DELETE_WINDOW", self.on_destroy)
 		self.wait_window(self)
@@ -109,20 +108,21 @@ class StatisticDialog(Toplevel):
 	def body(self):
 		fnt = Font(family="Arial", size=10)
 		self.tbl_fnt = fnt
-		
+				
+		num_len       = max(fnt.measure(_("clm_num")), fnt.measure("9999"))
 		word_len      = max(fnt.measure(_("clm_word")), fnt.measure(_("clm_transcription")), fnt.measure(_("clm_translate")))
 		cnt_len       = max(fnt.measure("9999"), fnt.measure(_("clm_cnt_suc")), fnt.measure(_("clm_cnt_err")))
 		prs_len       = max(fnt.measure("100.0%"), fnt.measure(_("clm_pers_suc")))
 		state_len     = max(fnt.measure(_("learn")), fnt.measure(_("learned")), fnt.measure(_("study")), fnt.measure(_("clm_state")))
-		self.len_clmn = [word_len, word_len, word_len, cnt_len, cnt_len, prs_len, state_len]
+		self.len_clmn = [num_len, word_len, word_len, word_len, cnt_len, cnt_len, prs_len, state_len]
 
 		# Находим слова с большей длинной, чем умолчательная
 		for stat in self.statistic.get_ru_en():
 			for it in range(0, 3):
 				if len(stat[it]) > 10:
-					self.len_clmn[it] = max(self.len_clmn[it], fnt.measure(stat[it]))
+					self.len_clmn[it+1] = max(self.len_clmn[it+1], fnt.measure(stat[it]))
 		sm = 5
-		for it in range(0, 7):
+		for it in range(0, len(self.len_clmn)):
 			self.len_clmn[it], sm = sm, sm+self.len_clmn[it]+20
 
 		self.btRuEn = Button(self, text=_("ru_en_btn"), command=self.show_ru_en)
@@ -156,16 +156,23 @@ class StatisticDialog(Toplevel):
 		for i, stat in enumerate([self.get_header_text()]+stat_table):
 			rc_bottom += (h+1)
 			self.canvas.create_line(rc_left, rc_bottom, rc_right, rc_bottom)
-			for it in range(0, 7):
-				if it == 6 and i!=0:
-					txt = state_str[stat[it]]
-					clr = clr_stat[stat[it]]
+			for it in range(0, len(self.len_clmn)):
+				stat_it = it-1
+				if it == 0:
+					if i == 0:
+						txt = _("clm_num")
+					else:
+						txt = str(i)
+					clr = clr_black
+				elif it == 7 and i!=0:
+					txt = state_str[stat[stat_it]]
+					clr = clr_stat[stat[stat_it]]
 				else:
-					txt = stat[it]
+					txt = stat[stat_it]
 					clr = clr_black
 				self.canvas.create_text(rc_left+self.len_clmn[it], rc_bottom-half_h, text=txt, anchor=W, font=self.tbl_fnt, fill=clr)
 
-		for it in range(0, 7):
+		for it in range(0, len(self.len_clmn)):
 			sm = rc_left+self.len_clmn[it]-5
 			self.canvas.create_line(sm, rc_top, sm, rc_bottom)
 		self.canvas.create_line(rc_right, rc_top, rc_right, rc_bottom)		
@@ -217,7 +224,7 @@ class MainWindow(Tk):
 		Label(frm_stat, font=fnt_stat, bg=clr_stat_frame, text=_("correct_incorrect")).pack(side="left")
 
 		img = PhotoImage(file="info.gif")
-		bt = Button(frm_stat, image=img, command=self.show_statistic)
+		bt = Button(frm_stat, image=img, bg=clr_stat_frame, relief="flat", command=self.show_statistic)
 		bt.image = img
 		bt.pack(side="right")
 
