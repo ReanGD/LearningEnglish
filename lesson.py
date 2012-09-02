@@ -4,6 +4,7 @@ import random
 import datetime
 import word
 import dictionary
+import lesson_words
 
 class Practice:
 	def __init__(self, lesson, word, type_pr):
@@ -43,7 +44,8 @@ class Lesson:
 		self.practice_list = []
 		self.dict.reload_dict(cfg["path_to_dict"])
 		self.dict.reload_stat(cfg["path_to_stat"])
-		self.dict.calc_word_scores(cfg["CntStudyWords"], cfg["MinPercent"], cfg["MinSuccessCnt"], self.type_pr)
+		words = self.dict.words_for_lesson(cfg["CntStudyWords"], cfg["MinPercent"], cfg["MinSuccessCnt"], self.type_pr)
+		self.lsn_words = lesson_words.LessonWords(words)
 
 	def get_dict(self):
 		return self.dict
@@ -64,7 +66,7 @@ class Lesson:
 		self.dict.save_stat(self.path_to_stat)
 
 	def get_next_practice(self):
-		pr = Practice(self, self.dict.get_any_word(), self.type_pr)
+		pr = Practice(self, self.lsn_words.get_any_word(), self.type_pr)
 		self.practice_list.append(pr)
 		return pr
 

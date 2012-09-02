@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import json
-import random
 import os.path
 import word
 import global_stat
@@ -9,7 +8,6 @@ import global_stat
 class Dict:
 	def __init__(self):
 		self.words = {}
-		self.lesson_words = []
 
 	def get_word_by_key(self, en):
 		w = self.words.get(en)
@@ -73,22 +71,11 @@ class Dict:
 		studied_words.sort(key = lambda it : it.get_stat(type_pr).get_success_persent())
 		studied_words = studied_words[:cnt_study_words]
 
-		return learned_words + studied_words
-
-	def calc_word_scores(self, cnt_study_words, min_percent, min_success_cnt, type_pr):
-		self.lesson_words    = self.words_for_lesson(cnt_study_words, min_percent, min_success_cnt, type_pr)
-		self.cnt_study_words = cnt_study_words
-		self.min_percent     = min_percent
-		self.min_success_cnt = min_success_cnt
-		
-		for it in self.lesson_words:
+		lesson_words = learned_words + studied_words
+		for it in lesson_words:
 			rating = it.get_stat(type_pr).calc_rating(min_percent, min_success_cnt)
 			it.set_rating(rating)
-
-		#normalize		
-		max_rating = max([it.get_rating() for it in self.lesson_words])
-		for it in self.lesson_words:
-			it.set_rating(it.get_rating()/max_rating)
+		return lesson_words
 
 	def save_stat(self, path_to_stat):
 		data = {}
@@ -96,9 +83,3 @@ class Dict:
 			data[it] = self.words[it].pack()
 		stat_json = {"version" : 1, "data" : data}
 		json.dump(stat_json, open(path_to_stat, "wb"))
-
-	def get_any_word(self):
-		while True:
-			wrd = random.choice(self.lesson_words)
-			if wrd.get_rating() > random.random():
-				return wrd
