@@ -144,7 +144,7 @@ class StatisticDialog(Toplevel):
 	def draw_stat(self, stat_table):
 		self.canvas.delete(ALL)
 		rc_left   = 5
-		rc_right  = 780
+		rc_right  = 830
 		rc_top    = 5
 		rc_bottom = rc_top
 
