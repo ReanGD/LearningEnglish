@@ -88,7 +88,7 @@ class Dict:
 		for it in self.words:
 			data[it] = self.words[it].pack()
 		stat_json = {"version" : 1, "data" : data}
-		json.dump(stat_json, open(path_to_stat, "wb"))
+		json.dump(stat_json, open(path_to_stat, "wb"), indent=2)
 
 class DictTestCase(unittest.TestCase):
 	def setUp(self):
