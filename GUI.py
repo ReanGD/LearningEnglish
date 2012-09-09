@@ -59,24 +59,24 @@ class ScrollCanvas(Canvas):
 		self.vscrollbar.config(command=self.yview)
 
 		parent.bind("<MouseWheel>", lambda event=None: self.move(-int(math.copysign(delta_scr, event.delta))))
-		parent.bind('<Button-4>',   lambda event=None: self.move(-delta_scr))
-		parent.bind('<Button-5>',   lambda event=None: self.move(delta_scr))
-		parent.bind('<Prior>',      lambda event=None: self.move(-delta_page))
-		parent.bind('<Next>',       lambda event=None: self.move(delta_page))
-		parent.bind('<Up>',         lambda event=None: self.move(-delta_scr))
-		parent.bind('<Down>',       lambda event=None: self.move(delta_scr))
-		parent.bind('<Home>',       lambda event=None: self.yview_moveto(0))
-		parent.bind('<End>',        lambda event=None: self.yview_moveto(1))
+		parent.bind("<Button-4>",   lambda event=None: self.move(-delta_scr))
+		parent.bind("<Button-5>",   lambda event=None: self.move(delta_scr))
+		parent.bind("<Prior>",      lambda event=None: self.move(-delta_page))
+		parent.bind("<Next>",       lambda event=None: self.move(delta_page))
+		parent.bind("<Up>",         lambda event=None: self.move(-delta_scr))
+		parent.bind("<Down>",       lambda event=None: self.move(delta_scr))
+		parent.bind("<Home>",       lambda event=None: self.yview_moveto(0))
+		parent.bind("<End>",        lambda event=None: self.yview_moveto(1))
 
 	def move(self, delta):
-		self.yview_scroll(delta, 'units')
+		self.yview_scroll(delta, "units")
 
 	def grid(self, row, column, columnspan):
 		self.vscrollbar.grid(row=row, column=column+columnspan, sticky=N+S)
 		Canvas.grid(self,row=row, column=column, columnspan=columnspan, sticky=N+S+E+W)		
 
 class StatisticDialog(Toplevel):
-	def __init__(self, parent, statistic):		
+	def __init__(self, parent, statistic):
 		Toplevel.__init__(self, parent)
 		
 		self.transient(parent)
@@ -139,7 +139,7 @@ class StatisticDialog(Toplevel):
 
 		self.show_ru_en()
 
-		self.canvas.config(scrollregion=self.canvas.bbox("all"))		
+		self.canvas.config(scrollregion=self.canvas.bbox("all"))
 
 	def draw_stat(self, stat_table):
 		self.canvas.delete(ALL)
@@ -201,12 +201,13 @@ class CloseDialog(tkSimpleDialog.Dialog):
 class MainWindow(Tk):
 	def __init__(self):
 		Tk.__init__(self)
-		self.show_answer         = False
+		self.show_answer         = True
 		self.lbl_word            = None
 		self.lbl_transcription   = None
 		self.lbl_result_msg      = None
 		self.lbl_correct_word    = None
 		self.lbl_correct_word_tr = None
+		self.edit_translate      = None
 		self.init_window()
 
 	def init_window(self):
@@ -310,7 +311,7 @@ class MainWindow(Tk):
 	def show_statistic(self):
 		StatisticDialog(self, self.global_statistic())
 
-	def set_word(self, new_word, is_new):		
+	def set_word(self, new_word, is_new):
 		if is_new:
 			self.lbl_result_msg["text"]  = ""
 		else:
@@ -340,11 +341,13 @@ class MainWindow(Tk):
 		self.lbl_stat_error["text"]   = "%i" % error_cnt
 
 	def on_check_translate(self, event):
-		self.show_answer = not self.show_answer
-		if not self.show_answer:
-			self.edit_translate["state"] = "normal"
-			self.new_practice()			
-		else:
-			self.edit_translate["state"] = "readonly"
+		if self.show_answer:
 			user_answer = self.edit_translate.get()
+			if user_answer.strip() == "":
+				return
+			self.edit_translate["state"] = "readonly"
 			self.end_practice(user_answer)
+		else:
+			self.edit_translate["state"] = "normal"
+			self.new_practice()
+		self.show_answer = not self.show_answer

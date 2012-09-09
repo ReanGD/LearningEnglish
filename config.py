@@ -50,7 +50,7 @@ class ConfigTestCase(unittest.TestCase):
 		cfg_dict = cfg.reload()
 
 		self.assertEqual(cfg_dict["path_to_dict"],"dict.json")
-		self.assertEqual(cfg_dict["path_to_stat"],"statistic.json")		
+		self.assertEqual(cfg_dict["path_to_stat"],"statistic.json")
 		self.assertEqual(cfg_dict["words_per_lesson"], 5)
 		self.assertEqual(cfg_dict["CntStudyWords"], 50)
 		self.assertEqual(cfg_dict["MinPercent"], 97.0)

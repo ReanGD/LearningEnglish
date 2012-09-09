@@ -108,7 +108,7 @@ class DictTestCase(unittest.TestCase):
 		json_dict = [self.create_word_data(i) for i in range(interval_from,interval_to)]
 		self.dict_obj.reload_dict_s(json.dumps(json_dict))
 
-	def load_stat(self, interval_from, interval_to):		
+	def load_stat(self, interval_from, interval_to):
 		json_data = dict([self.create_word_stat(i) for i in range(interval_from,interval_to)])
 		json_stat = {"version" : 1, "data" : json_data}
 		self.dict_obj.reload_stat_s(json.dumps(json_stat))
