@@ -263,10 +263,11 @@ class MainWindow(Tk):
 		self.lbl_correct_word_tr.pack(side="left")
 
 		self.edit_translate = Entry(frm_answer, font=fnt_translate, width=30)
-		self.edit_translate.bind("<Return>", self.on_check_translate)
 		self.edit_translate.pack(side="bottom")
 		self.edit_translate.focus()
 
+		self.bind("<Return>", self.on_check_translate)
+		self.bind("<FocusIn>", lambda event: self.edit_translate.focus())
 		########################################################
 
 		x = (self.winfo_screenwidth() - self.winfo_reqwidth()) / 2
@@ -337,11 +338,13 @@ class MainWindow(Tk):
 		error_cnt   = stat[2]
 		self.lbl_stat_success["text"] = "%i %s %i/" % (success_cnt, _("of"), max_success)
 		self.lbl_stat_error["text"]   = "%i" % error_cnt
-	
+
 	def on_check_translate(self, event):
 		self.show_answer = not self.show_answer
 		if not self.show_answer:
-			self.new_practice()
+			self.edit_translate["state"] = "normal"
+			self.new_practice()			
 		else:
-			user_answer = event.widget.get()
+			self.edit_translate["state"] = "readonly"
+			user_answer = self.edit_translate.get()
 			self.end_practice(user_answer)
