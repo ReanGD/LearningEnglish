@@ -43,7 +43,7 @@ class Lesson:
 		self.path_to_stat  = cfg["path_to_stat"]
 		self.practice_list = []
 		self.dict.reload_dict(cfg["path_to_dict"])
-		self.dict.reload_stat(cfg["path_to_stat"])
+		self.dict.reload_stat(self.path_to_stat)
 		words = self.dict.words_for_lesson(cfg["CntStudyWords"], cfg["MinPercent"], cfg["MinSuccessCnt"], self.type_pr)
 		self.lsn_words = lesson_words.LessonWords(words)
 
