@@ -18,8 +18,10 @@ _str_dict = {
 	,"learn"             : "учить"
 	,"learned"           : "выучено"
 	,"study"             : "изучаем"
+	,"total"             : "всего"
 	,"ru_en_btn"         : "Ru->En"
 	,"en_ru_btn"         : "En->Ru"
+	,"common_stat_btn"   : "Общая статистика"
 	,"clm_num"           : "№"
 	,"clm_word"          : "Слово"
 	,"clm_transcription" : "Транскрипция"
@@ -28,6 +30,10 @@ _str_dict = {
 	,"clm_cnt_err"       : "Не верных"
 	,"clm_pers_suc"      : "% верных"
 	,"clm_state"         : "Статус"
+	,"clm_ru_en_cnt"     : "Ru->En"
+	,"clm_ru_en_pers"    : "Ru->En (%)"
+	,"clm_en_ru_cnt"     : "En->Ru"
+	,"clm_en_ru_pers"    : "En->Ru (%)"
 }
 
 clr_stat_frame   = "#E9F6FE"
@@ -93,6 +99,7 @@ class StatisticDialog(Toplevel):
 		x = (self.winfo_screenwidth() - width) / 2
 		y = (self.winfo_screenheight() - height) / 2
 		self.title(_("statistic_title"))
+		self.resizable(False, True)
 		self.wm_geometry("%dx%d+%d+%d" % (width, height, x, y))
 		self.focus_set()
 		self.protocol("WM_DELETE_WINDOW", self.on_destroy)
@@ -121,41 +128,55 @@ class StatisticDialog(Toplevel):
 			for it in range(0, 3):
 				if len(stat[it]) > 10:
 					self.len_clmn[it+1] = max(self.len_clmn[it+1], fnt.measure(stat[it]))
-		sm = 5
-		for it in range(0, len(self.len_clmn)):
-			self.len_clmn[it], sm = sm, sm+self.len_clmn[it]+20
+
+		self.len_clmn = [i+20 for i in self.len_clmn]
 
 		self.btRuEn = Button(self, text=_("ru_en_btn"), command=self.show_ru_en)
 		self.btRuEn.grid(row=0, column=0, sticky=W+E)
 		self.btEnRu = Button(self, text=_("en_ru_btn"), command=self.show_en_ru)
 		self.btEnRu.grid(row=0, column=1, sticky=W+E)
+		self.btCmnStat = Button(self, text=_("common_stat_btn"), command=self.show_common_stat)
+		self.btCmnStat.grid(row=0, column=2, sticky=W+E)
 
 		self.canvas = ScrollCanvas(self)
-		self.canvas.grid(row=1, column=0, columnspan=2)
+		self.canvas.grid(row=1, column=0, columnspan=3)
 
 		self.grid_rowconfigure(1, weight=1)
 		self.grid_columnconfigure(0, weight=1)
-		self.grid_columnconfigure(1, weight=1)		
+		self.grid_columnconfigure(1, weight=1)
+		self.grid_columnconfigure(2, weight=1)
 
 		self.show_ru_en()
 
 		self.canvas.config(scrollregion=self.canvas.bbox("all"))
 
-	def draw_stat(self, stat_table):
+	def draw_table(self, rc_left, rc_top, row_height, row_cnt, clms_width):
+		rc_right  = rc_left+sum(clms_width)
+		rc_bottom = rc_top + row_cnt*row_height
+
 		self.canvas.delete(ALL)
+		sm = rc_top		
+		for i in range(0, row_cnt+1):
+			self.canvas.create_line(rc_left, sm, rc_right, sm)
+			sm += row_height
+
+		sm = rc_left
+		for i in clms_width+[0]:
+			self.canvas.create_line(sm, rc_top, sm, rc_bottom)
+			sm += i
+
+	def draw_stat(self, stat_table):		
 		rc_left   = 5
-		rc_right  = 830
 		rc_top    = 5
-		rc_bottom = rc_top
+		row_height = self.tbl_fnt.metrics("linespace")+1
+		self.draw_table(rc_left, rc_top, row_height, len(stat_table)+1, self.len_clmn)
 
-		h         = self.tbl_fnt.metrics("linespace")
-		half_h    = h//2+1
-		state_str = (_("learned"), _("study"), _("learn"))
+		state_str  = (_("learned"), _("study"), _("learn"))
 
-		self.canvas.create_line(rc_left, rc_top, rc_right, rc_top)
+		row_pos = rc_top - row_height//2
 		for i, stat in enumerate([self.get_header_text()]+stat_table):
-			rc_bottom += (h+1)
-			self.canvas.create_line(rc_left, rc_bottom, rc_right, rc_bottom)
+			row_pos += row_height
+			clm_pos = rc_left+5
 			for it in range(0, len(self.len_clmn)):
 				stat_it = it-1
 				if it == 0:
@@ -170,22 +191,51 @@ class StatisticDialog(Toplevel):
 				else:
 					txt = stat[stat_it]
 					clr = clr_black
-				self.canvas.create_text(rc_left+self.len_clmn[it], rc_bottom-half_h, text=txt, anchor=W, font=self.tbl_fnt, fill=clr)
+				self.canvas.create_text(clm_pos, row_pos, text=txt, anchor=W, font=self.tbl_fnt, fill=clr)
+				clm_pos += self.len_clmn[it]		
 
-		for it in range(0, len(self.len_clmn)):
-			sm = rc_left+self.len_clmn[it]-5
-			self.canvas.create_line(sm, rc_top, sm, rc_bottom)
-		self.canvas.create_line(rc_right, rc_top, rc_right, rc_bottom)		
+	def draw_common_stat(self):
+		row_name = [[_("learned")], [_("study")], [_("learn")], [_("total")]]
+		table = [row_name[i] + it for i, it in enumerate(self.statistic.get_common_stat())]
+		table = [["", _("clm_ru_en_cnt"), _("clm_en_ru_cnt"), _("clm_ru_en_pers"), _("clm_en_ru_pers")]] + table
+
+		len_clmn = [0, 0, 0, 0, 0]
+		for row in table:
+			for i, text in enumerate(row):
+				len_clmn[i] = max(len_clmn[i], self.tbl_fnt.measure(text))
+		len_clmn = [i+20 for i in len_clmn]
+
+		rc_left    = 5
+		rc_top     = 5
+		row_height = self.tbl_fnt.metrics("linespace")+1
+		self.draw_table(rc_left, rc_top, row_height, 5, len_clmn)
+
+		row_pos = rc_top - row_height//2
+		for i, row in enumerate(table):
+			row_pos += row_height
+			clm_pos = rc_left+5
+			for j, text in enumerate(row):
+				clr = clr_black
+				self.canvas.create_text(clm_pos, row_pos, text=text, anchor=W, font=self.tbl_fnt, fill=clr)
+				clm_pos += len_clmn[j]
 
 	def show_ru_en(self):
-		self.btRuEn["relief"] = "sunken"
-		self.btEnRu["relief"] = "raised"
+		self.btRuEn["relief"]    = "sunken"
+		self.btEnRu["relief"]    = "raised"
+		self.btCmnStat["relief"] = "raised"
 		self.draw_stat(self.statistic.get_ru_en())
 
 	def show_en_ru(self):
-		self.btRuEn["relief"] = "raised"
-		self.btEnRu["relief"] = "sunken"
+		self.btRuEn["relief"]    = "raised"
+		self.btEnRu["relief"]    = "sunken"
+		self.btCmnStat["relief"] = "raised"
 		self.draw_stat(self.statistic.get_en_ru())
+
+	def show_common_stat(self):
+		self.btRuEn["relief"]    = "raised"
+		self.btEnRu["relief"]    = "raised"
+		self.btCmnStat["relief"] = "sunken"
+		self.draw_common_stat()
 
 class CloseDialog(tkSimpleDialog.Dialog):
 	def body(self, master):

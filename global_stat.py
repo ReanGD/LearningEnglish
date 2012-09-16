@@ -31,3 +31,16 @@ class GlobalStatistic:
 
 	def get_ru_en(self):
 		return sorted(self.stat_ru_en, key=lambda x : (x[6], x[0].lower()))
+
+	def get_common_stat(self):
+		table = []
+		total_ru_en = len(self.stat_ru_en)
+		total_en_ru = len(self.stat_en_ru)
+		for i in range(0, 3):
+			cnt_ru_en  = sum(1 for j in self.stat_ru_en if j[6] == i)
+			pers_ru_en = round(float(cnt_ru_en)*100.0/float(total_ru_en), 2)
+			cnt_en_ru  = sum(1 for j in self.stat_en_ru if j[6] == i)
+			pers_en_ru = round(float(cnt_en_ru)*100.0/float(total_en_ru), 2)
+			table.append([str(cnt_ru_en), str(cnt_en_ru), str(pers_ru_en)+' %', str(pers_en_ru)+' %'])
+		table.append([str(total_ru_en), str(total_en_ru), "100.0 %", "100.0 %"])
+		return table
