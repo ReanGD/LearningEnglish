@@ -3,38 +3,8 @@
 import math
 from tkFont import Font
 from Tkinter import *
+from loc_res import _
 import tkSimpleDialog
-
-_str_dict = {
-	 "end_lesson"        : "Завершить текущий урок"
-	,"end_program"       : "Закрыть программу"
-	,"correct_incorrect" : "Верно/Неверно"
-	,"learning_english"  : "Изучаем английский"
-	,"statistic_title"   : "Статистика ответов"
-	,"correct"           : "Верно"
-	,"incorrect"         : "Неверно"
-	,"reiterate"         : "Повторим еще раз"
-	,"of"                : "из"
-	,"learn"             : "учить"
-	,"learned"           : "выучено"
-	,"study"             : "изучаем"
-	,"total"             : "всего"
-	,"ru_en_btn"         : "Ru->En"
-	,"en_ru_btn"         : "En->Ru"
-	,"common_stat_btn"   : "Общая статистика"
-	,"clm_num"           : "№"
-	,"clm_word"          : "Слово"
-	,"clm_transcription" : "Транскрипция"
-	,"clm_translate"     : "Перевод"
-	,"clm_cnt_suc"       : "Верных"
-	,"clm_cnt_err"       : "Не верных"
-	,"clm_pers_suc"      : "% верных"
-	,"clm_state"         : "Статус"
-	,"clm_ru_en_cnt"     : "Ru->En"
-	,"clm_ru_en_pers"    : "Ru->En (%)"
-	,"clm_en_ru_cnt"     : "En->Ru"
-	,"clm_en_ru_pers"    : "En->Ru (%)"
-}
 
 clr_stat_frame    = "#E9F6FE"
 clr_word_frame    = "#FFFFE0"
@@ -47,9 +17,6 @@ clr_stat          = ["#7B7B00", "#007B00", "#7B7B7B"]
 
 LEFT  = 0
 RIGHT = 1
-
-def _(name):
-	return _str_dict[name]
 
 class AutoScrollbar(Scrollbar):
 	def set(self, lo, hi):
@@ -142,7 +109,7 @@ class StatisticDialog(Toplevel):
 		height = 750
 		x = (self.winfo_screenwidth() - width) / 2
 		y = (self.winfo_screenheight() - height) / 2
-		self.title(_("statistic_title"))
+		self.title(_("win_statistic_title"))
 		self.resizable(False, True)
 		self.wm_geometry("%dx%d+%d+%d" % (width, height, x, y))
 		self.focus_set()
@@ -164,7 +131,7 @@ class StatisticDialog(Toplevel):
 		word_len      = max(fnt.measure(_("clm_word")), fnt.measure(_("clm_transcription")), fnt.measure(_("clm_translate")))
 		cnt_len       = max(fnt.measure("9999"), fnt.measure(_("clm_cnt_suc")), fnt.measure(_("clm_cnt_err")))
 		prs_len       = max(fnt.measure("100.0%"), fnt.measure(_("clm_pers_suc")))
-		state_len     = max(fnt.measure(_("learn")), fnt.measure(_("learned")), fnt.measure(_("study")), fnt.measure(_("clm_state")))
+		state_len     = max(fnt.measure(_("st_learn")), fnt.measure(_("st_learned")), fnt.measure(_("st_study")), fnt.measure(_("clm_state")))
 		self.len_clmn = [num_len, word_len, word_len, word_len, cnt_len, cnt_len, prs_len, state_len]
 
 		# Находим слова с большей длинной, чем умолчательная
@@ -176,11 +143,11 @@ class StatisticDialog(Toplevel):
 		self.len_clmn = [i+20 for i in self.len_clmn]
 
 		Label(self, text="", bg=clr_tbl_bg[0]).grid(row=0, column=0, sticky=W+E, padx=2)
-		self.btRuEn = Button(self, text=_("ru_en_btn"), command=self.show_ru_en)
+		self.btRuEn = Button(self, text=_("btn_ru_en"), command=self.show_ru_en)
 		self.btRuEn.grid(row=0, column=1, sticky=W+E, pady=5, padx=1)
-		self.btEnRu = Button(self, text=_("en_ru_btn"), command=self.show_en_ru)
+		self.btEnRu = Button(self, text=_("btn_en_ru"), command=self.show_en_ru)
 		self.btEnRu.grid(row=0, column=2, sticky=W+E, pady=5, padx=1)
-		self.btCmnStat = Button(self, text=_("common_stat_btn"), command=self.show_common_stat)
+		self.btCmnStat = Button(self, text=_("btn_common_stat"), command=self.show_common_stat)
 		self.btCmnStat.grid(row=0, column=3, sticky=W+E, pady=5, padx=1)
 
 		self.canvas = ScrollCanvas(self)
@@ -201,7 +168,7 @@ class StatisticDialog(Toplevel):
 		row_height = self.tbl_fnt.metrics("linespace")+1
 		self.canvas.create_table(rc_left, rc_top, row_height, len(stat_table)+1, self.len_clmn)
 
-		state_str  = (_("learned"), _("study"), _("learn"))
+		state_str  = (_("st_learned"), _("st_study"), _("st_learn"))
 		for i, stat in enumerate([self.get_header_text()]+stat_table):
 			for it in range(0, len(self.len_clmn)):
 				stat_it = it-1
@@ -224,7 +191,7 @@ class StatisticDialog(Toplevel):
 				self.canvas.fill_cell(it, i, txt, clr, self.tbl_fnt, alignment)
 
 	def draw_common_stat(self):
-		row_name = [[_("learned")], [_("study")], [_("learn")], [_("total")]]
+		row_name = [[_("row_learned")], [_("row_study")], [_("row_learn")], [_("row_total")]]
 		table = [row_name[i] + it for i, it in enumerate(self.statistic.get_common_stat())]
 		table = [["", _("clm_ru_en_cnt"), _("clm_en_ru_cnt"), _("clm_ru_en_pers"), _("clm_en_ru_pers")]] + table
 
@@ -351,7 +318,7 @@ class MainWindow(Tk):
 
 		x = (self.winfo_screenwidth() - self.winfo_reqwidth()) / 2
 		y = (self.winfo_screenheight() - self.winfo_reqheight()) / 2
-		self.title(_("learning_english"))
+		self.title(_("win_learning_english"))
 		self.resizable(False, False)
 		self.wm_geometry("+%d+%d" % (x, y))
 		self.protocol("WM_DELETE_WINDOW", self.on_destroy)
