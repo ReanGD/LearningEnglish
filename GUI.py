@@ -121,7 +121,7 @@ class StatisticDialog(Toplevel):
 		self.destroy()
 
 	def get_header_text(self):
-		return (_("clm_word"), _("clm_transcription"), _("clm_translate"), _("clm_cnt_suc"), _("clm_cnt_err"), _("clm_pers_suc"), _("clm_state"))
+		return (_("clm_num"), _("clm_word"), _("clm_transcription"), _("clm_translate"), _("clm_cnt_suc"), _("clm_cnt_err"), _("clm_pers_suc"), _("clm_state"))
 
 	def body(self):
 		fnt = Font(family="Arial", size=10)
@@ -136,9 +136,9 @@ class StatisticDialog(Toplevel):
 
 		# Находим слова с большей длинной, чем умолчательная
 		for stat in self.statistic.get_ru_en():
-			for it in range(0, 3):
+			for it in range(1, 4):
 				if len(stat[it]) > 10:
-					self.len_clmn[it+1] = max(self.len_clmn[it+1], fnt.measure(stat[it]))
+					self.len_clmn[it] = max(self.len_clmn[it], fnt.measure(stat[it]))
 
 		self.len_clmn = [i+20 for i in self.len_clmn]
 
@@ -166,29 +166,21 @@ class StatisticDialog(Toplevel):
 		rc_left   = 0
 		rc_top    = 1
 		row_height = self.tbl_fnt.metrics("linespace")+1
-		self.canvas.create_table(rc_left, rc_top, row_height, len(stat_table)+1, self.len_clmn)
+		self.canvas.create_table(rc_left, rc_top, row_height, len(stat_table), self.len_clmn)
 
 		state_str  = (_("st_learned"), _("st_study"), _("st_learn"))
-		for i, stat in enumerate([self.get_header_text()]+stat_table):
-			for it in range(0, len(self.len_clmn)):
-				stat_it = it-1
-				alignment = LEFT
-				if it == 0:
-					if i == 0:
-						txt = _("clm_num")
-					else:
-						txt = str(i)
-						alignment = RIGHT
-					clr = clr_black
-				elif it == 7 and i!=0:
-					txt = state_str[stat[stat_it]]
-					clr = clr_stat[stat[stat_it]]
+		for i, row in enumerate([self.get_header_text()]+stat_table):
+			for j, text in enumerate(row):
+				if i > 0 and j in (0, 4, 5, 6):
+					alignment = RIGHT
 				else:
-					txt = stat[stat_it]
-					clr = clr_black
-					if i > 0 and it >= 4:
-						alignment = RIGHT
-				self.canvas.fill_cell(it, i, txt, clr, self.tbl_fnt, alignment)
+					alignment = LEFT
+
+				if i > 0 and j == 7:
+					txt, clr = state_str[text], clr_stat[text]
+				else:
+					txt, clr = text, clr_black
+				self.canvas.fill_cell(j, i, txt, clr, self.tbl_fnt, alignment)
 
 	def draw_common_stat(self):
 		row_name = [[_("row_learned")], [_("row_study")], [_("row_learn")], [_("row_total")]]
@@ -208,7 +200,7 @@ class StatisticDialog(Toplevel):
 
 		for i, row in enumerate(table):
 			for j, text in enumerate(row):
-				if i>0 and j>0:
+				if i > 0 and j > 0:
 					alignment = RIGHT
 				else:
 					alignment = LEFT

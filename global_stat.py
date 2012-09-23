@@ -22,15 +22,19 @@ class GlobalStatistic:
 			state = 2
 		return (en_word, transcription, ru_word, str(success_cnt), str(error_cnt), str(round(pers, 2))+'%', state)
 
-	def add_word(self, word, stat_en_ru, stat_ru_en):	
+	def add_word(self, word, stat_en_ru, stat_ru_en):
 		self.stat_en_ru.append(self.calc_stat(word, stat_en_ru))
 		self.stat_ru_en.append(self.calc_stat(word, stat_ru_en))
 
+	def prepare_stat(self, stat):
+		tbl = sorted(stat, key=lambda x : (x[6], x[0].lower()))
+		return [tuple([str(i+1)])+it for i, it in enumerate(tbl)]
+
 	def get_en_ru(self):
-		return sorted(self.stat_en_ru, key=lambda x : (x[6], x[0].lower()))
+		return self.prepare_stat(self.stat_en_ru)
 
 	def get_ru_en(self):
-		return sorted(self.stat_ru_en, key=lambda x : (x[6], x[0].lower()))
+		return self.prepare_stat(self.stat_ru_en)
 
 	def get_common_stat(self):
 		table = []
