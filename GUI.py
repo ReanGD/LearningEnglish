@@ -36,13 +36,17 @@ _str_dict = {
 	,"clm_en_ru_pers"    : "En->Ru (%)"
 }
 
-clr_stat_frame   = "#E9F6FE"
-clr_word_frame   = "#FFFFE0"
-clr_answer_frame = "#E9F6FE"
-clr_success      = "#348000"
-clr_error        = "#FC0039"
-clr_black        = "#000000"
-clr_stat         = ["#7B7B00", "#007B00", "#7B7B7B"]
+clr_stat_frame    = "#E9F6FE"
+clr_word_frame    = "#FFFFE0"
+clr_answer_frame  = "#E9F6FE"
+clr_success       = "#348000"
+clr_error         = "#FC0039"
+clr_black         = "#000000"
+clr_tbl_bg        = ["#E9F6FE", "#FFFFE0"]
+clr_stat          = ["#7B7B00", "#007B00", "#7B7B7B"]
+
+LEFT  = 0
+RIGHT = 1
 
 def _(name):
 	return _str_dict[name]
@@ -61,7 +65,7 @@ class ScrollCanvas(Canvas):
 		delta_page = 10
 		
 		self.vscrollbar = AutoScrollbar(parent)
-		Canvas.__init__(self, parent, yscrollcommand=self.vscrollbar.set)
+		Canvas.__init__(self, parent, yscrollcommand=self.vscrollbar.set, bg=clr_tbl_bg[0], highlightthickness=0)
 		self.vscrollbar.config(command=self.yview)
 
 		parent.bind("<MouseWheel>", lambda event=None: self.move(-int(math.copysign(delta_scr, event.delta))))
@@ -78,12 +82,52 @@ class ScrollCanvas(Canvas):
 		self.yview_scroll(delta, "units")
 
 	def grid(self, row, column, columnspan):
-		self.vscrollbar.grid(row=row, column=column+columnspan, sticky=N+S)
-		Canvas.grid(self,row=row, column=column, columnspan=columnspan, sticky=N+S+E+W)		
+		self.vscrollbar.grid(row=row, column=column+columnspan-1, sticky=N+S)
+		Canvas.grid(self,row=row, column=column, columnspan=columnspan-1, sticky=N+S+E+W)
+
+	def clear(self):
+		self.delete(ALL)
+		self.yview_moveto(0)
+
+	def create_table(self, rc_left, rc_top, row_height, row_cnt, clms_width):
+		self.tbl_rc_top     = rc_top
+		self.tbl_row_height = row_height
+		self.tbl_column_pos = clms_width + [0]
+
+		sm = rc_left
+		for i, it in enumerate(self.tbl_column_pos):
+			self.tbl_column_pos[i], sm = sm, sm+it
+
+		rc_right  = self.tbl_column_pos[-1]
+		rc_bottom = rc_top + row_cnt*row_height
+		
+		self.clear()
+
+		self.create_line(rc_left, rc_top, rc_right, rc_top)
+		if row_cnt % 2 == 1:
+			self.create_line(rc_left, rc_bottom, rc_right+1, rc_bottom)
+		for i in range(1, row_cnt, 2):
+			sm = rc_top+row_height*i
+			self.create_rectangle(rc_left, sm, rc_right, sm+row_height, fill=clr_tbl_bg[1], outline=clr_black)
+
+		for i in self.tbl_column_pos:
+			self.create_line(i, rc_top, i, rc_bottom)
+
+	def fill_cell(self, column, row, text, clr, font, alignment):
+		if alignment not in (LEFT, RIGHT):
+			alignment = LEFT
+		if alignment == LEFT:
+			anchor  = W
+			clm_pos = self.tbl_column_pos[column] + 5
+		else:
+			anchor  = E
+			clm_pos = self.tbl_column_pos[column+1] - 5
+		row_pos = self.tbl_rc_top + (self.tbl_row_height+1)//2 + self.tbl_row_height*row
+		self.create_text(clm_pos, row_pos, text=text, anchor=anchor, font=font, fill=clr)
 
 class StatisticDialog(Toplevel):
 	def __init__(self, parent, statistic):
-		Toplevel.__init__(self, parent)
+		Toplevel.__init__(self, parent, bg=clr_tbl_bg[0])
 		
 		self.transient(parent)
 		self.parent    = parent
@@ -131,59 +175,43 @@ class StatisticDialog(Toplevel):
 
 		self.len_clmn = [i+20 for i in self.len_clmn]
 
+		Label(self, text="", bg=clr_tbl_bg[0]).grid(row=0, column=0, sticky=W+E, padx=2)
 		self.btRuEn = Button(self, text=_("ru_en_btn"), command=self.show_ru_en)
-		self.btRuEn.grid(row=0, column=0, sticky=W+E)
+		self.btRuEn.grid(row=0, column=1, sticky=W+E, pady=5, padx=1)
 		self.btEnRu = Button(self, text=_("en_ru_btn"), command=self.show_en_ru)
-		self.btEnRu.grid(row=0, column=1, sticky=W+E)
+		self.btEnRu.grid(row=0, column=2, sticky=W+E, pady=5, padx=1)
 		self.btCmnStat = Button(self, text=_("common_stat_btn"), command=self.show_common_stat)
-		self.btCmnStat.grid(row=0, column=2, sticky=W+E)
+		self.btCmnStat.grid(row=0, column=3, sticky=W+E, pady=5, padx=1)
 
 		self.canvas = ScrollCanvas(self)
-		self.canvas.grid(row=1, column=0, columnspan=3)
+		self.canvas.grid(row=1, column=1, columnspan=5)
 
 		self.grid_rowconfigure(1, weight=1)
-		self.grid_columnconfigure(0, weight=1)
 		self.grid_columnconfigure(1, weight=1)
 		self.grid_columnconfigure(2, weight=1)
+		self.grid_columnconfigure(3, weight=1)
 
 		self.show_ru_en()
 
 		self.canvas.config(scrollregion=self.canvas.bbox("all"))
 
-	def draw_table(self, rc_left, rc_top, row_height, row_cnt, clms_width):
-		rc_right  = rc_left+sum(clms_width)
-		rc_bottom = rc_top + row_cnt*row_height
-
-		self.canvas.delete(ALL)
-		sm = rc_top		
-		for i in range(0, row_cnt+1):
-			self.canvas.create_line(rc_left, sm, rc_right, sm)
-			sm += row_height
-
-		sm = rc_left
-		for i in clms_width+[0]:
-			self.canvas.create_line(sm, rc_top, sm, rc_bottom)
-			sm += i
-
-	def draw_stat(self, stat_table):		
-		rc_left   = 5
-		rc_top    = 5
+	def draw_stat(self, stat_table):
+		rc_left   = 0
+		rc_top    = 1
 		row_height = self.tbl_fnt.metrics("linespace")+1
-		self.draw_table(rc_left, rc_top, row_height, len(stat_table)+1, self.len_clmn)
+		self.canvas.create_table(rc_left, rc_top, row_height, len(stat_table)+1, self.len_clmn)
 
 		state_str  = (_("learned"), _("study"), _("learn"))
-
-		row_pos = rc_top - row_height//2
 		for i, stat in enumerate([self.get_header_text()]+stat_table):
-			row_pos += row_height
-			clm_pos = rc_left+5
 			for it in range(0, len(self.len_clmn)):
 				stat_it = it-1
+				alignment = LEFT
 				if it == 0:
 					if i == 0:
 						txt = _("clm_num")
 					else:
 						txt = str(i)
+						alignment = RIGHT
 					clr = clr_black
 				elif it == 7 and i!=0:
 					txt = state_str[stat[stat_it]]
@@ -191,8 +219,9 @@ class StatisticDialog(Toplevel):
 				else:
 					txt = stat[stat_it]
 					clr = clr_black
-				self.canvas.create_text(clm_pos, row_pos, text=txt, anchor=W, font=self.tbl_fnt, fill=clr)
-				clm_pos += self.len_clmn[it]		
+					if i > 0 and it >= 4:
+						alignment = RIGHT
+				self.canvas.fill_cell(it, i, txt, clr, self.tbl_fnt, alignment)
 
 	def draw_common_stat(self):
 		row_name = [[_("learned")], [_("study")], [_("learn")], [_("total")]]
@@ -205,19 +234,18 @@ class StatisticDialog(Toplevel):
 				len_clmn[i] = max(len_clmn[i], self.tbl_fnt.measure(text))
 		len_clmn = [i+20 for i in len_clmn]
 
-		rc_left    = 5
-		rc_top     = 5
+		rc_left    = 0
+		rc_top     = 1
 		row_height = self.tbl_fnt.metrics("linespace")+1
-		self.draw_table(rc_left, rc_top, row_height, 5, len_clmn)
+		self.canvas.create_table(rc_left, rc_top, row_height, 5, len_clmn)
 
-		row_pos = rc_top - row_height//2
 		for i, row in enumerate(table):
-			row_pos += row_height
-			clm_pos = rc_left+5
 			for j, text in enumerate(row):
-				clr = clr_black
-				self.canvas.create_text(clm_pos, row_pos, text=text, anchor=W, font=self.tbl_fnt, fill=clr)
-				clm_pos += len_clmn[j]
+				if i>0 and j>0:
+					alignment = RIGHT
+				else:
+					alignment = LEFT
+				self.canvas.fill_cell(j, i, text, clr_black, self.tbl_fnt, alignment)
 
 	def show_ru_en(self):
 		self.btRuEn["relief"]    = "sunken"
