@@ -166,7 +166,7 @@ class StatisticDialog(Toplevel):
 		rc_left   = 0
 		rc_top    = 1
 		row_height = self.tbl_fnt.metrics("linespace")+1
-		self.canvas.create_table(rc_left, rc_top, row_height, len(stat_table), self.len_clmn)
+		self.canvas.create_table(rc_left, rc_top, row_height, len(stat_table)+1, self.len_clmn)
 
 		state_str  = (_("st_learned"), _("st_study"), _("st_learn"))
 		for i, row in enumerate([self.get_header_text()]+stat_table):
