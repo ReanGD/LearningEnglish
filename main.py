@@ -50,7 +50,7 @@ class App(GUI.MainWindow):
 def run():
 	import singleton
 	me = singleton.SingleInstance()
-	os.chdir(os.path.dirname(__file__))
+	os.chdir(os.path.dirname(str(os.path.abspath(__file__))))
 	App()
 
 if __name__=="__main__":
