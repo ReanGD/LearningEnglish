@@ -105,12 +105,12 @@ class StatisticDialog(Toplevel):
 		self.wait_visibility() # window needs to be visible for the grab
 		self.grab_set()
 
-		width  = 850
-		height = 750
+		width  = min(1050, self.winfo_screenwidth())
+		height = min(750, self.winfo_screenheight())
 		x = (self.winfo_screenwidth() - width) / 2
 		y = (self.winfo_screenheight() - height) / 2
 		self.title(_("win_statistic_title"))
-		self.resizable(False, True)
+		self.resizable(True, True)
 		self.wm_geometry("%dx%d+%d+%d" % (width, height, x, y))
 		self.focus_set()
 		self.protocol("WM_DELETE_WINDOW", self.on_destroy)
