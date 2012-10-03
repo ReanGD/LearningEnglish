@@ -15,8 +15,7 @@ class App(GUI.MainWindow):
 		self.mainloop()
 
 	def new_lesson(self):
-		cfg_dict        = self.cfg.reload()
-		self.lesson     = lesson.Lesson(cfg_dict)
+		self.lesson     = lesson.Lesson(self.cfg.reload())
 		self.practice   = None
 		self.new_practice()
 		self.show()

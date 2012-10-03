@@ -355,14 +355,14 @@ class MainWindow(Tk):
 			self.lbl_result_msg["text"]  = _("reiterate")
 			self.lbl_result_msg["fg"]    = clr_error
 		self.lbl_word["text"]            = new_word.word
-		self.lbl_transcription["text"]   = new_word.transcription
+		self.lbl_transcription["text"]   = "" if self.cfg.get_dict()["hide_transcription"] == "yes" else new_word.transcription
 		self.lbl_correct_word["text"]    = ""
 		self.lbl_correct_word_tr["text"] = ""
 		self.edit_translate.delete(0, END)
 
 	def set_practice_result(self, is_success, right_answer):
 		self.lbl_correct_word["text"]    = right_answer.word
-		self.lbl_correct_word_tr["text"] = right_answer.transcription
+		self.lbl_correct_word_tr["text"] = "" if self.cfg.get_dict()["hide_transcription"] == "yes" else right_answer.transcription
 		if is_success:
 			self.lbl_result_msg["text"] = _("correct")
 			self.lbl_result_msg["fg"]   = clr_success

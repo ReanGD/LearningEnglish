@@ -17,13 +17,15 @@ class Config:
 			self.cfg_dict = json.loads(txt)
 		else:
 			self.cfg_dict = {}
-		self.cfg_dict["path_to_dict"]     = self.cfg_dict.get("path_to_dict","dict.json")
-		self.cfg_dict["path_to_stat"]     = self.cfg_dict.get("path_to_stat","statistic.json")
-		self.cfg_dict["words_per_lesson"] = int(self.cfg_dict.get("words_per_lesson",5))
-		self.cfg_dict["CntStudyWords"]    = int(self.cfg_dict.get("CntStudyWords",50))
-		self.cfg_dict["MinPercent"]       = float(self.cfg_dict.get("MinPercent",97.0))
-		self.cfg_dict["MinSuccessCnt"]    = int(self.cfg_dict.get("MinSuccessCnt",10))
-		self.cfg_dict["retry_time"]       = int(self.cfg_dict.get("retry_time",1800))
+		self.cfg_dict["path_to_dict"]       = self.cfg_dict.get("path_to_dict","dict.json")
+		self.cfg_dict["path_to_stat"]       = self.cfg_dict.get("path_to_stat","statistic.json")
+		self.cfg_dict["words_per_lesson"]   = int(self.cfg_dict.get("words_per_lesson",5))
+		self.cfg_dict["CntStudyWords"]      = int(self.cfg_dict.get("CntStudyWords",50))
+		self.cfg_dict["MinPercent"]         = float(self.cfg_dict.get("MinPercent",97.0))
+		self.cfg_dict["MinSuccessCnt"]      = int(self.cfg_dict.get("MinSuccessCnt",10))
+		self.cfg_dict["retry_time"]         = int(self.cfg_dict.get("retry_time",1800))
+		self.cfg_dict["hide_transcription"] = self.cfg_dict.get("hide_transcription","no")
+		
 		return self.cfg_dict
 
 	def get_dict(self):
@@ -42,8 +44,9 @@ class ConfigTestCase(unittest.TestCase):
 		self.assertEqual(cfg_dict["MinPercent"], 97.0)
 		self.assertEqual(cfg_dict["MinSuccessCnt"], 10)
 		self.assertEqual(cfg_dict["retry_time"], 1800)
+		self.assertEqual(cfg_dict["hide_transcription"], "no")
 
-		self.assertEqual(len(cfg_dict), 7)
+		self.assertEqual(len(cfg_dict), 8)
 
 	def test_not_exists(self):
 		cfg = Config("fake_config.json")
@@ -56,8 +59,9 @@ class ConfigTestCase(unittest.TestCase):
 		self.assertEqual(cfg_dict["MinPercent"], 97.0)
 		self.assertEqual(cfg_dict["MinSuccessCnt"], 10)
 		self.assertEqual(cfg_dict["retry_time"], 1800)
+		self.assertEqual(cfg_dict["hide_transcription"], "no")
 
-		self.assertEqual(len(cfg_dict), 7)
+		self.assertEqual(len(cfg_dict), 8)
 
 if __name__=="__main__":
 	suite = unittest.TestLoader().loadTestsFromTestCase(ConfigTestCase)
