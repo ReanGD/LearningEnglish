@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 
 import re
 import unittest
@@ -36,7 +36,7 @@ class Word:
 			ru_word = self.ru_word + "," + ru_word
 		word_list = map(lambda x : x.strip(), ru_word.split(","))
 		self.ru_word = ", ".join(word_list).replace("[","").replace("]","")
-		self.ru_word_list = map(lambda x : reg_no_sign_part.sub(".*?", reg_cmnt.sub("", x.lower()).strip()), word_list)
+		self.ru_word_list = map(lambda x : reg_no_sign_part.sub(".*?", reg_cmnt.sub("", x.lower()).strip()).replace(u"ё", u"е"), word_list)
 
 	def set_rating(self, value):
 		self.rating = value
@@ -51,6 +51,7 @@ class Word:
 			return WordInfo(self.ru_word, "")
 
 	def check_ru(self, answer):
+		answer = answer.replace(u"ё", u"е")
 		for it in self.ru_word_list:
 			if re.match(it+"\Z", answer) != None:
 				return True
@@ -93,13 +94,13 @@ class Word:
 class WordTestCase(unittest.TestCase):
 	def setUp(self):
 		self.word = Word()
-		self.hello_tr = "\'he\'ləu"
-		self.hello_tr_out = "[\'he\'ləu]"
+		self.hello_tr = u"\'he\'ləu"
+		self.hello_tr_out = u"[\'he\'ləu]"
 
 	def test_init(self):
-		self.assertEqual(self.word.en_word,       "")
-		self.assertEqual(self.word.transcription, "")
-		self.assertEqual(self.word.ru_word,       "")
+		self.assertEqual(self.word.en_word,       u"")
+		self.assertEqual(self.word.transcription, u"")
+		self.assertEqual(self.word.ru_word,       u"")
 		self.assertEqual(self.word.ru_word_list,  [])
 		self.assertEqual(self.word.rating,        0)
 		self.assertEqual(len(self.word.stat),     2)
@@ -107,60 +108,60 @@ class WordTestCase(unittest.TestCase):
 		self.assertEqual(self.word.stat[ru_to_en_write], statistic.Statistic())
 
 	def test_add_value(self):
-		en_word       = "Hello"
-		ru_word0      = "привет"
-		self.word.add_value("  "+en_word+"  ", "  "+self.hello_tr+"  ", "  "+ru_word0+"  ")
+		en_word       = u"Hello"
+		ru_word0      = u"привет"
+		self.word.add_value(u"  "+en_word+u"  ", u"  "+self.hello_tr+u"  ", u"  "+ru_word0+u"  ")
 		self.assertEqual(self.word.en_word,       en_word)
 		self.assertEqual(self.word.transcription, self.hello_tr_out)
 		self.assertEqual(self.word.ru_word,       ru_word0)
 		self.assertEqual(self.word.ru_word_list,  [ru_word0])
 		
-		ru_word1 = "приветствие"
-		self.word.add_value("  "+en_word+"  ", "  "+self.hello_tr+"  ", "  "+ru_word1+"  ")
+		ru_word1 = u"приветствие"
+		self.word.add_value(u"  "+en_word+u"  ", u"  "+self.hello_tr+u"  ", u"  "+ru_word1+u"  ")
 		self.assertEqual(self.word.en_word,       en_word)
 		self.assertEqual(self.word.transcription, self.hello_tr_out)
-		self.assertEqual(self.word.ru_word,       ru_word0+", "+ru_word1)
+		self.assertEqual(self.word.ru_word,       ru_word0+u", "+ru_word1)
 		self.assertEqual(self.word.ru_word_list,  [ru_word0, ru_word1])
 
 	def test_add_value_double_ru(self):
-		en_word       = "Hello"
-		ru_word0      = "привет"
-		ru_word1      = "алло"
+		en_word       = u"Hello"
+		ru_word0      = u"привет"
+		ru_word1      = u"алло"
 		
-		self.word.add_value("  "+en_word+"  ", "  "+self.hello_tr+"  ", "  "+ru_word0+", "+ru_word1+"  ")
+		self.word.add_value(u"  "+en_word+u"  ", u"  "+self.hello_tr+u"  ", u"  "+ru_word0+u", "+ru_word1+u"  ")
 		self.assertEqual(self.word.en_word,       en_word)
 		self.assertEqual(self.word.transcription, self.hello_tr_out)
-		self.assertEqual(self.word.ru_word,       ru_word0+", "+ru_word1)
+		self.assertEqual(self.word.ru_word,       ru_word0+u", "+ru_word1)
 		self.assertEqual(self.word.ru_word_list,  [ru_word0, ru_word1])
 		
-		ru_word2 = "приветствие"
-		ru_word3 = "оклик"
-		self.word.add_value("  "+en_word+"  ", None, "  "+ru_word2+", "+ru_word3+"  ")
+		ru_word2 = u"приветствие"
+		ru_word3 = u"оклик"
+		self.word.add_value(u"  "+en_word+u"  ", None, u"  "+ru_word2+u", "+ru_word3+u"  ")
 		self.assertEqual(self.word.en_word,       en_word)
 		self.assertEqual(self.word.transcription, self.hello_tr_out)
-		self.assertEqual(self.word.ru_word,       ru_word0+", "+ru_word1+", "+ru_word2+", "+ru_word3)
+		self.assertEqual(self.word.ru_word,       ru_word0+u", "+ru_word1+u", "+ru_word2+u", "+ru_word3)
 		self.assertEqual(self.word.ru_word_list,  [ru_word0, ru_word1, ru_word2, ru_word3])
 
 	def test_add_value_cmnt(self):
-		en_word       = "Hello"
-		ru_word0      = "привет"
-		ru_word0_cmnt = "(Здоровается)"
-		ru_word1      = "алло"
+		en_word       = u"Hello"
+		ru_word0      = u"привет"
+		ru_word0_cmnt = u"(Здоровается)"
+		ru_word1      = u"алло"
 		
-		self.word.add_value("  "+en_word+"  ", "  "+self.hello_tr+"  ", "  "+ru_word0+" "+ru_word0_cmnt+" , "+ru_word1+"  ")
+		self.word.add_value(u"  "+en_word+u"  ", u"  "+self.hello_tr+u"  ", u"  "+ru_word0+u" "+ru_word0_cmnt+u" , "+ru_word1+u"  ")
 		self.assertEqual(self.word.en_word,       en_word)
 		self.assertEqual(self.word.transcription, self.hello_tr_out)
-		self.assertEqual(self.word.ru_word,       ru_word0+" "+ru_word0_cmnt+", "+ru_word1)
+		self.assertEqual(self.word.ru_word,       ru_word0+u" "+ru_word0_cmnt+u", "+ru_word1)
 		self.assertEqual(self.word.ru_word_list,  [ru_word0, ru_word1])
 
 	def test_add_value_no_sign_part(self):
-		en_word       = "Hello"
+		en_word       = u"Hello"
 		
-		self.word.add_value("  "+en_word+"  ", "  "+self.hello_tr+"  ", "привет[ствие],ок[лик]ат[ь]")
+		self.word.add_value(u"  "+en_word+u"  ", u"  "+self.hello_tr+u"  ", u"привет[ствие],ок[лик]ат[ь]")
 		self.assertEqual(self.word.en_word,       en_word)
 		self.assertEqual(self.word.transcription, self.hello_tr_out)
-		self.assertEqual(self.word.ru_word,       "приветствие, окликать")
-		self.assertEqual(self.word.ru_word_list,  ["привет.*?", "ок.*?ат.*?"])
+		self.assertEqual(self.word.ru_word,       u"приветствие, окликать")
+		self.assertEqual(self.word.ru_word_list,  [u"привет.*?", u"ок.*?ат.*?"])
 
 	def test_rating(self):
 		rating = 51.879
@@ -168,57 +169,75 @@ class WordTestCase(unittest.TestCase):
 		self.assertEqual(self.word.get_rating(), rating)
 
 	def test_source_data(self):
-		en_word       = "Hello"
-		ru_word       = "привет"
+		en_word       = u"Hello"
+		ru_word       = u"привет"
 		self.word.add_value(en_word, self.hello_tr, ru_word)
 		self.assertEqual(self.word.source_data(en_to_ru_write), WordInfo(en_word, self.hello_tr_out))
-		self.assertEqual(self.word.source_data(ru_to_en_write), WordInfo(ru_word, ""))
+		self.assertEqual(self.word.source_data(ru_to_en_write), WordInfo(ru_word, u""))
 
 	def test_check(self):
-		en_word       = "Hello"
-		ru_word0      = "привет"
-		ru_word1      = "алло"
-		self.word.add_value(en_word, self.hello_tr, ru_word0+","+ru_word1)
+		en_word       = u"Hello"
+		ru_word0      = u"привет"
+		ru_word1      = u"алло"
+		self.word.add_value(en_word, self.hello_tr, ru_word0+u","+ru_word1)
 
-		ru_ans = WordInfo(ru_word0+", "+ru_word1, "")
-		self.assertEqual(self.word.check("  "+ru_word0.upper()+"  ", en_to_ru_write), (True, ru_ans))
-		self.assertEqual(self.word.check("  "+ru_word1.upper()+"  ", en_to_ru_write), (True, ru_ans))
-		self.assertEqual(self.word.check("error_answer", en_to_ru_write), (False, ru_ans))
+		ru_ans = WordInfo(ru_word0+u", "+ru_word1, u"")
+		self.assertEqual(self.word.check(u"  "+ru_word0.upper()+u"  ", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check(u"  "+ru_word1.upper()+u"  ", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check(u"error_answer", en_to_ru_write), (False, ru_ans))
 
 		en_ans = WordInfo(en_word, self.hello_tr_out)
-		self.assertEqual(self.word.check("  "+en_word.upper()+"  ", ru_to_en_write), (True, en_ans))
-		self.assertEqual(self.word.check("error_answer", ru_to_en_write), (False, en_ans))
+		self.assertEqual(self.word.check(u"  "+en_word.upper()+u"  ", ru_to_en_write), (True, en_ans))
+		self.assertEqual(self.word.check(u"error_answer", ru_to_en_write), (False, en_ans))
 
 	def test_check_cmnt(self):
-		en_word       = "Hello"
-		ru_word0      = "привет"
-		ru_word0_cmnt = " (Здоровается)"
-		ru_word1      = "алло"
+		en_word       = u"Hello"
+		ru_word0      = u"привет"
+		ru_word0_cmnt = u" (Здоровается)"
+		ru_word1      = u"алло"
 		self.word.add_value(en_word, self.hello_tr, ru_word0+ru_word0_cmnt+","+ru_word1)
 
-		ru_ans = WordInfo(ru_word0+ru_word0_cmnt+", "+ru_word1, "")
-		self.assertEqual(self.word.check("  "+ru_word0.upper()+"  ", en_to_ru_write), (True, ru_ans))
-		self.assertEqual(self.word.check("  "+ru_word1.upper()+"  ", en_to_ru_write), (True, ru_ans))
-		self.assertEqual(self.word.check("error_answer", en_to_ru_write), (False, ru_ans))
+		ru_ans = WordInfo(ru_word0+ru_word0_cmnt+u", "+ru_word1, u"")
+		self.assertEqual(self.word.check(u"  "+ru_word0.upper()+u"  ", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check(u"  "+ru_word1.upper()+u"  ", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check(u"error_answer", en_to_ru_write), (False, ru_ans))
 
 	def test_check_no_sign_part(self):
-		en_word   = "Hello"
-		return_ru = "приветствие, окликать"
-		self.word.add_value("  "+en_word+"  ", "  "+self.hello_tr+"  ", "привет[ствие],ок[лик]ат[ь]")
+		en_word   = u"Hello"
+		return_ru = u"приветствие, окликать"
+		self.word.add_value(u"  "+en_word+u"  ", u"  "+self.hello_tr+u"  ", u"привет[ствие],ок[лик]ат[ь]")
 
-		ru_ans = WordInfo(return_ru, "")
-		self.assertEqual(self.word.check("привет", en_to_ru_write), (True, ru_ans))
-		self.assertEqual(self.word.check("приветaddtext", en_to_ru_write), (True, ru_ans))
-		self.assertEqual(self.word.check("окат", en_to_ru_write), (True, ru_ans))
-		self.assertEqual(self.word.check("окликaddатadd]", en_to_ru_write), (True, ru_ans))
-		self.assertEqual(self.word.check("привит", en_to_ru_write), (False, ru_ans))
-		self.assertEqual(self.word.check("окар", en_to_ru_write), (False, ru_ans))
+		ru_ans = WordInfo(return_ru, u"")
+		self.assertEqual(self.word.check(u"привет", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check(u"приветaddtext", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check(u"окат", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check(u"окликaddатadd]", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check(u"привит", en_to_ru_write), (False, ru_ans))
+		self.assertEqual(self.word.check(u"окар", en_to_ru_write), (False, ru_ans))
+
+	def test_check_special_char_in_word(self):
+		en_word   = u"Yellow"
+		return_ru = u"жёлтый"
+		self.word.add_value(en_word, u"", return_ru)
+		
+		ru_ans = WordInfo(return_ru, u"")
+		self.assertEqual(self.word.check(u"желтый", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check(u"жёлтый", en_to_ru_write), (True, ru_ans))
+
+	def test_check_special_char_in_answer(self):
+		en_word   = u"Yellow"
+		return_ru = u"желтый"
+		self.word.add_value(en_word, u"", return_ru)
+		
+		ru_ans = WordInfo(return_ru, u"")
+		self.assertEqual(self.word.check(u"желтый", en_to_ru_write), (True, ru_ans))
+		self.assertEqual(self.word.check(u"жёлтый", en_to_ru_write), (True, ru_ans))
 
 	def test_is_load(self):
 		self.assertEqual(self.word.is_load(), False)
 
-		en_word       = "Hello"
-		ru_word       = "привет"
+		en_word       = u"Hello"
+		ru_word       = u"привет"
 		self.word.add_value(en_word, self.hello_tr, ru_word)
 		self.assertEqual(self.word.is_load(), True)
 
