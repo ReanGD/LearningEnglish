@@ -22,21 +22,36 @@ class Word:
 	def __init__(self):
 		self.en_word		= ""
 		self.transcription	= ""
+		self.ru_source      = []
 		self.ru_word		= ""
 		self.ru_word_list	= []
 		self.rating			= 0
 		self.stat 			= {en_to_ru_write : statistic.Statistic(), ru_to_en_write : statistic.Statistic()}
+
+	@staticmethod
+	def convert_spec_chars(s):
+		return s.replace(u"ё", u"е")
+
+	@staticmethod
+	def prepare_show_words(word_list):
+		filtered_list = []
+		norm_list     = []
+		for it in map(lambda x : x.replace("[","").replace("]",""), word_list):
+			norm_word = Word.convert_spec_chars(it.lower())
+			if norm_word not in norm_list:
+				norm_list.append(norm_word)
+				filtered_list.append(it)
+		return ", ".join(filtered_list)
 
 	def add_value(self, en_word, transcription, ru_word):
 		if self.en_word == "":
 			self.en_word		= en_word.strip()
 		if self.transcription == "":
 			self.transcription	= "[%s]" % transcription.strip()
-		if self.ru_word != "":
-			ru_word = self.ru_word + "," + ru_word
-		word_list = map(lambda x : x.strip(), ru_word.split(","))
-		self.ru_word = ", ".join(word_list).replace("[","").replace("]","")
-		self.ru_word_list = map(lambda x : reg_no_sign_part.sub(".*?", reg_cmnt.sub("", x.lower()).strip()).replace(u"ё", u"е"), word_list)
+		self.ru_source += map(lambda x : x.strip(), ru_word.split(","))
+
+		self.ru_word = Word.prepare_show_words(self.ru_source)
+		self.ru_word_list = map(lambda x : Word.convert_spec_chars(reg_no_sign_part.sub(".*?", reg_cmnt.sub("", x.lower()).strip())), self.ru_source)
 
 	def set_rating(self, value):
 		self.rating = value
@@ -51,7 +66,7 @@ class Word:
 			return WordInfo(self.ru_word, "")
 
 	def check_ru(self, answer):
-		answer = answer.replace(u"ё", u"е")
+		answer = Word.convert_spec_chars(answer)
 		for it in self.ru_word_list:
 			if re.match(it+"\Z", answer) != None:
 				return True
@@ -162,6 +177,21 @@ class WordTestCase(unittest.TestCase):
 		self.assertEqual(self.word.transcription, self.hello_tr_out)
 		self.assertEqual(self.word.ru_word,       u"приветствие, окликать")
 		self.assertEqual(self.word.ru_word_list,  [u"привет.*?", u"ок.*?ат.*?"])
+
+	def test_add_value_with_duplicate(self):
+		en_word       = u"Hello"
+		
+		self.word.add_value(en_word, self.hello_tr, u"привет")
+		self.word.add_value(en_word, self.hello_tr, u"привет")
+		self.word.add_value(en_word, self.hello_tr, u"пРивет")
+		self.word.add_value(en_word, self.hello_tr, u"пРиВет")
+		self.word.add_value(en_word, self.hello_tr, u"пРи[Вет]")
+		self.word.add_value(en_word, self.hello_tr, u"пРиВет(1)")
+		self.word.add_value(en_word, self.hello_tr, u"пРиВет(1)")
+		self.assertEqual(self.word.en_word,       en_word)
+		self.assertEqual(self.word.transcription, self.hello_tr_out)
+		self.assertEqual(self.word.ru_word,       u"привет, пРиВет(1)")
+		self.assertEqual(self.word.ru_word_list,  [u"привет", u"привет", u"привет", u"привет", u"при.*?", u"привет", u"привет"])
 
 	def test_rating(self):
 		rating = 51.879
