@@ -17,14 +17,19 @@ class LessonWords:
 		cnt_word = len(self.remaining_words)
 		if cnt_word == 0:
 			self.remaining_words = self.all_words[:]
+			cnt_word = len(self.remaining_words)
 
 		if cnt_word == 1:
 			wrd = self.remaining_words[0]
 			self.remaining_words.remove(wrd)
 		else:
 			max_rating = max([wrd.get_rating() for wrd in self.remaining_words])
+			it_cnt = 0
 			while True:
 				wrd = random.choice(self.remaining_words)
+				it_cnt += 1
+				if it_cnt > 1000:
+					break
 				if wrd.get_rating() > random.random()*max_rating:
 					self.remaining_words.remove(wrd)
 					break

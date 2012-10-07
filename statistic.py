@@ -38,7 +38,8 @@ class Statistic:
 		pers  = self.get_success_persent()
 		total = self.get_total_answer()
 		
-		rating = 100.0 - pers
+		# Базовый рейтинг от 1 до 101
+		rating = 101.0 - pers
 		# пока не достигли необходимого числа правильных ответов, рейтинг выше
 		rest_sa = (min_success_cnt - self.success_answer)
 		if rest_sa < 0:
@@ -58,7 +59,7 @@ class Statistic:
 			days = (datetime.date.today() - datetime.datetime.strptime(self.last_lesson_date, "%Y.%m.%d").date()).days
 		rating *= math.log10(days+1.0)+1.0
 
-		return rating
+		return max(rating, 0.1)
 
 	def update(self, is_success, dt):
 		self.last_lesson_date   = dt
@@ -112,27 +113,40 @@ class StatisticTestCase(unittest.TestCase):
 		dt0   = today.strftime("%Y.%m.%d")
 		dt1   = (today - datetime.timedelta(1)).strftime("%Y.%m.%d")
 
-		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 200.000, 2)
+		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 201.000, 2)
 
 		self.stat.update(True, dt0)
-		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 83.915, 2)
+		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 84.847, 2)
 
 		self.stat.update(False, dt0)
-		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 182.565, 2)
+		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 183.869, 2)
 
 		self.stat.update(True, dt0)
-		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 91.866, 2)
+		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 92.676, 2)
 
 		self.stat.update(True, dt1)
-		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 93.413, 2)
+		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 94.396, 2)
 
 		for it in range(0, 7):
 			self.stat.update(True, dt1)
-		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 5.476, 2)
+		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 6.078, 2)
 
 		for it in range(0, 25):
 			self.stat.update(True, dt1)
-		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 0.099, 2)
+		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 0.131, 2)
+
+	def test_calc_rating_not_zero(self):
+		today = datetime.date.today()
+		dt0   = today.strftime("%Y.%m.%d")
+		dt1   = (today - datetime.timedelta(1)).strftime("%Y.%m.%d")
+
+		for it in range(0, 10):
+			self.stat.update(True, dt1)
+		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 0.215, 2)
+
+		for it in range(0, 100):
+			self.stat.update(True, dt1)
+		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 0.1, 2)
 
 	def test_update(self):
 		dt = "01.02.2010"
