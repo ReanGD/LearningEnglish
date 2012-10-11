@@ -29,6 +29,7 @@ class LessonWords:
 				wrd = random.choice(self.remaining_words)
 				it_cnt += 1
 				if it_cnt > 1000:
+					self.remaining_words.remove(wrd)
 					break
 				if wrd.get_rating() > random.random()*max_rating:
 					self.remaining_words.remove(wrd)
