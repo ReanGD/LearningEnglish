@@ -61,7 +61,6 @@ class TableCanvas(Canvas):
         self.editable = True
         self.filtered = False
 
-        self.loadPrefs()        
         #set any options passed in kwargs to overwrite defaults/prefs
         for key in kwargs:
             self.__dict__[key] = kwargs[key]
@@ -84,11 +83,10 @@ class TableCanvas(Canvas):
         #when you add a column type you should edit this dict
         self.columnactions = {'text' : {"Edit":  'draw_cellentry' },
                               'number' : {"Edit": 'draw_cellentry' }}
-        #self.savePrefs()    
         return
 
     def set_defaults(self):
-        self.cellwidth=150
+        self.cellwidth=120
         self.maxcellwidth=400
         self.rowheight=20
         self.horizlines=1
@@ -101,7 +99,8 @@ class TableCanvas(Canvas):
         self.x_start=0
         self.y_start=1
         self.linewidth=1.0
-        self.thefont = "Arial 11"
+        self.fontsize = 11
+        self.thefont = ('Arial', self.fontsize)
         self.cellbackgr = '#F7F7FA'
         self.entrybackgr = 'white'
         self.grid_color = '#ABB1AD'
@@ -318,7 +317,7 @@ class TableCanvas(Canvas):
     def adjust_colWidths(self):
         """Optimally adjust col widths at start to accomodate the longest entry"""
         try:
-            fontsize=self.celltextsizevar.get()
+            fontsize=self.fontsize
         except:
             fontsize=11
         scale = 8.5 # +fontsize/10
@@ -409,7 +408,6 @@ class TableCanvas(Canvas):
                                      parent=self.parentframe)
         else:
             self.paging = 0
-            self.usepagingvar.set(0)
             self.redrawTable()
         return
 
@@ -1251,7 +1249,6 @@ class TableCanvas(Canvas):
 
         if outside == 1:
             #if outside table, just show general items            
-            popupmenu.add_command(label="Show Prefs", command= self.showtablePrefs)
             popupmenu.add_command(label="Export Table", command= self.exportTable)
             popupmenu.add_command(label="Filter Recs", command= self.showFilteringBar)
         else:
@@ -1267,8 +1264,7 @@ class TableCanvas(Canvas):
             def add_defaultcommands():
                 """now add general actions for all cells"""
                 main = ["Set Fill Color","Set Text Color","Copy", "Paste", "Fill Down","Fill Right", "Clear Data",
-                         "Delete Row", "Select All", "Plot Selected","Plot Options",
-                         "Show Prefs"]
+                         "Delete Row", "Select All", "Plot Selected","Plot Options"]
                 utils = ["View Record", "Formulae->Value", "Export Table"]
                 defaultactions={"Set Fill Color" : lambda : self.setcellColor(rows,cols,key='bg'),
                                 "Set Text Color" : lambda : self.setcellColor(rows,cols,key='fg'),
@@ -1283,7 +1279,6 @@ class TableCanvas(Canvas):
                                 "Plot Selected" : self.plot_Selected,
                                 "Plot Options" : self.plotSetup,
                                 "Export Table" : self.exportTable,
-                                "Show Prefs" : self.showtablePrefs,
                                 "Formulae->Value" : lambda : self.convertFormulae(rows, cols)}
 
                 for action in main:
@@ -1820,219 +1815,6 @@ class TableCanvas(Canvas):
     def removeColors(self):
         """Remove all color formatting"""
         self.model.resetcolors()
-        return
-
-    #--- Preferences stuff ---
-
-    def showtablePrefs(self, prefs=None):
-        """Show table options dialog using an instance of prefs"""
-        #self.prefs = prefs
-        if self.prefs == None:
-            self.loadPrefs()
-        self.prefswindow=Toplevel()
-        self.prefswindow.geometry('+300+450')
-        self.prefswindow.title('Preferences')
-
-        frame1=Frame(self.prefswindow)
-        frame1.pack(side=LEFT)
-        frame2=Frame(self.prefswindow)
-        frame2.pack()
-        def close_prefsdialog():
-            self.prefswindow.destroy()
-        row=0
-        Checkbutton(frame1, text="Show horizontal lines", variable=self.horizlinesvar,
-                    onvalue=1, offvalue=0).grid(row=row,column=0, columnspan=2, sticky='news')
-        row=row+1
-        Checkbutton(frame1, text="Show vertical lines", variable=self.vertlinesvar,
-                    onvalue=1, offvalue=0).grid(row=row,column=0, columnspan=2, sticky='news')
-        row=row+1
-        Checkbutton(frame1, text="Alternate Row Color", variable=self.alternaterowsvar,
-                    onvalue=1, offvalue=0).grid(row=row,column=0, columnspan=2, sticky='news')
-        row=row+1        
-        lblrowheight=Label(frame1,text='Row Height:')
-        lblrowheight.grid(row=row,column=0,padx=3,pady=2)
-        rowheightentry=Scale(frame1,from_=12,to=50,resolution=1,orient='horizontal',
-                            relief='ridge',variable=self.rowheightvar)
-        rowheightentry.grid(row=row,column=1,padx=3,pady=2)
-        row=row+1
-        lblcellwidth=Label(frame1,text='Cell Width:')
-        lblcellwidth.grid(row=row,column=0,padx=3,pady=2)
-        cellwidthentry=Scale(frame1,from_=20,to=500,resolution=10,orient='horizontal',
-                            relief='ridge',variable=self.cellwidthvar)
-        cellwidthentry.grid(row=row,column=1,padx=3,pady=2)
-        row=row+1
-
-        lbllinewidth=Label(frame1,text='Line Width:')
-        lbllinewidth.grid(row=row,column=0,padx=3,pady=2)
-        linewidthentry=Scale(frame1,from_=0,to=10,resolution=1,orient='horizontal',
-                            relief='ridge',variable=self.linewidthvar)
-        linewidthentry.grid(row=row,column=1,padx=3,pady=2)
-        row=row+1
-        Checkbutton(frame1, text="Auto resize columns", variable=self.autoresizecolsvar,
-                    onvalue=1, offvalue=0).grid(row=row,column=0, columnspan=2, sticky='news')
-        row=row+1
-        Checkbutton(frame1, text="Use paging", variable=self.usepagingvar,
-                    onvalue=1, offvalue=0).grid(row=row,column=0, columnspan=2, sticky='news')
-        row=row+1
-        Label(frame1, text='Rows/page:').grid(row=row,column=0, sticky='news')
-        Entry(frame1, textvariable=self.rowsperpagevar,bg='white',width=12,relief='groove').grid(row=row,column=1, pady=2,sticky='ns')
-        row=row+1
-        lblfont=Label(frame2,text='Cell Font:')
-        lblfont.grid(row=row,column=0,padx=3,pady=2)
-        fontentry_button=Menubutton(frame2,textvariable=self.celltextfontvar,
-					relief=RAISED,width=16)
-        fontentry_menu=Menu(fontentry_button,tearoff=0)
-        fontentry_button['menu']=fontentry_menu
-        #
-        # Other fonts available
-        #
-        fts=['Arial','Courier','Verdana','Fixed','Times']
-        for text in fts:
-            fontentry_menu.add_radiobutton(label=text,
-                                            variable=self.celltextfontvar,
-                                            value=text,
-                                            indicatoron=1)
-        fontentry_button.grid(row=row,column=1, sticky='nes', padx=3,pady=2)
-        row=row+1
-        lblfontsize=Label(frame2,text='Text Size:')
-        lblfontsize.grid(row=row,column=0,padx=3,pady=2)
-        fontsizeentry=Scale(frame2,from_=8,to=30,resolution=1,orient='horizontal',
-                            relief='ridge',variable=self.celltextsizevar)
-
-        fontsizeentry.grid(row=row,column=1, sticky='wens',padx=3,pady=2)
-        row=row+1
-        #colors
-
-        cellbackgrbutton = Button(frame2, text='table background', bg=self.cellbackgr,
-                                relief='groove', command=self.setcellbackgr)
-        cellbackgrbutton.grid(row=row,column=0,columnspan=2, sticky='news',padx=3,pady=2)
-        row=row+1
-        grid_colorbutton = Button(frame2, text='grid color', bg=self.grid_color,
-                                foreground='black', highlightcolor='white',
-                                relief='groove', command=self.setgrid_color)
-        grid_colorbutton.grid(row=row,column=0,columnspan=2,  sticky='news',padx=3,pady=2)
-        row=row+1
-        rowselectedcolorbutton = Button(frame2, text='row highlight color', bg=self.rowselectedcolor,
-                                foreground='black', highlightcolor='white',
-                                relief='groove', command=self.setrowselectedcolor)
-        rowselectedcolorbutton.grid(row=row,column=0,columnspan=2,  sticky='news',padx=3,pady=2)
-        row=row+1
-
-        # Data specific settings
-        b = Button(frame2, text="Reset Colors", command=self.removeColors)
-        b.grid(row=row,column=1,columnspan=2,sticky='news',padx=4,pady=4)
-
-        frame=Frame(self.prefswindow)
-        frame.pack()
-        #
-        # Apply Button
-        #
-        b = Button(frame, text="Apply Settings", command=self.applyPrefs)
-        b.grid(row=row,column=1,columnspan=2,sticky='news',padx=4,pady=4)
-        #
-        # Close button
-        #
-        c=Button(frame,text='Close', command=close_prefsdialog)
-        c.grid(row=row,column=0,sticky='news',padx=4,pady=4)
-        self.prefswindow.focus_set()
-        self.prefswindow.grab_set()
-        self.prefswindow.wait_window()
-        return self.prefswindow
-
-    def loadPrefs(self, prefs=None):
-        """Load table specific prefs from the prefs instance used
-           if they are not present, create them."""
-
-        if prefs==None:
-            prefs=Preferences('Table',{'check_for_update':1})
-        self.prefs = prefs
-        defaultprefs = {'horizlines':self.horizlines, 'vertlines':self.vertlines,
-                        'alternaterows':self.alternaterows,
-                        'rowheight':self.rowheight,
-                        'cellwidth':120,
-                        'autoresizecols': 0,
-                        'paging': 0, 'rowsperpage' : 50,
-                        'celltextsize':11, 'celltextfont':'Arial',
-                        'cellbackgr': self.cellbackgr, 'grid_color': self.grid_color,
-                        'linewidth' : self.linewidth,
-                        'rowselectedcolor': self.rowselectedcolor}
-
-        for prop in defaultprefs.keys():
-            try:
-                self.prefs.get(prop);
-            except:
-                self.prefs.set(prop, defaultprefs[prop])
-        #Create tkvars for dialog
-        self.rowheightvar = IntVar()
-        self.rowheightvar.set(self.prefs.get('rowheight'))
-        self.rowheight = self.rowheightvar.get()
-        self.cellwidthvar = IntVar()
-        self.cellwidthvar.set(self.prefs.get('cellwidth'))
-        self.cellwidth = self.cellwidthvar.get()
-        self.linewidthvar = IntVar()
-        self.linewidthvar.set(self.prefs.get('linewidth'))
-        self.autoresizecolsvar = IntVar()
-        self.autoresizecolsvar.set(self.prefs.get('autoresizecols'))
-        self.horizlinesvar = IntVar()
-        self.horizlinesvar.set(self.prefs.get('horizlines'))
-        self.vertlinesvar = IntVar()
-        self.vertlinesvar.set(self.prefs.get('vertlines'))
-        self.alternaterowsvar = IntVar()
-        self.alternaterowsvar.set(self.prefs.get('alternaterows'))
-        self.usepagingvar = IntVar()
-        self.usepagingvar.set(self.prefs.get('paging'))
-        self.paging = self.usepagingvar.get()
-        self.rowsperpagevar = StringVar()
-        self.rowsperpagevar.set(self.prefs.get('rowsperpage'))
-        self.celltextsizevar = IntVar()
-        self.celltextsizevar.set(self.prefs.get('celltextsize'))
-        self.celltextfontvar = StringVar()
-        self.celltextfontvar.set(self.prefs.get('celltextfont'))
-        self.cellbackgr = self.prefs.get('cellbackgr')
-        self.grid_color = self.prefs.get('grid_color')
-        self.rowselectedcolor = self.prefs.get('rowselectedcolor')        
-        self.fontsize = self.celltextsizevar.get()
-        self.thefont = (self.celltextfontvar.get(), self.celltextsizevar.get())
-        return
-
-    def savePrefs(self):
-        """Save and set the prefs"""
-        try:
-            self.prefs.set('horizlines', self.horizlinesvar.get())
-            self.horizlines = self.horizlinesvar.get()
-            self.prefs.set('vertlines', self.vertlinesvar.get())
-            self.vertlines = self.vertlinesvar.get()
-            self.prefs.set('alternaterows', self.alternaterowsvar.get())
-            self.alternaterows = self.alternaterowsvar.get()            
-            self.prefs.set('rowheight', self.rowheightvar.get())
-            self.rowheight = self.rowheightvar.get()
-            self.prefs.set('cellwidth', self.cellwidthvar.get())
-            self.cellwidth = self.cellwidthvar.get()
-            self.prefs.set('linewidth', self.linewidthvar.get())
-            self.linewidth = self.linewidthvar.get()
-            self.prefs.set('autoresizecols', self.autoresizecolsvar.get())
-            self.autoresizecols = self.autoresizecolsvar.get()
-            self.paging = self.usepagingvar.get()
-            self.prefs.set('paging', self.usepagingvar.get())
-            self.rowsperpage = int(self.rowsperpagevar.get())
-            self.prefs.set('rowsperpage', self.rowsperpagevar.get())
-            self.prefs.set('celltextsize', self.celltextsizevar.get())
-            self.prefs.set('celltextfont', self.celltextfontvar.get())
-            self.prefs.set('cellbackgr', self.cellbackgr)
-            self.prefs.set('grid_color', self.grid_color)
-            self.prefs.set('rowselectedcolor', self.rowselectedcolor)
-            self.thefont = (self.celltextfontvar.get(), self.celltextsizevar.get())          
-            self.fontsize = self.celltextsizevar.get()
-        except ValueError:
-            pass
-        self.prefs.save_prefs()
-
-        return
-
-    def applyPrefs(self):
-        """Apply prefs to the table by redrawing"""
-        self.savePrefs()
-        self.redrawTable()
         return
 
     def AskForColorButton(self, frame, text, func):
