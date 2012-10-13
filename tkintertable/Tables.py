@@ -22,7 +22,6 @@
 from Tkinter import *
 from TableModels import TableModel
 from TableFormula import Formula
-from Prefs import Preferences
 import tkFileDialog, tkMessageBox, tkSimpleDialog
 import tkFont
 import math
@@ -1264,7 +1263,7 @@ class TableCanvas(Canvas):
             def add_defaultcommands():
                 """now add general actions for all cells"""
                 main = ["Set Fill Color","Set Text Color","Copy", "Paste", "Fill Down","Fill Right", "Clear Data",
-                         "Delete Row", "Select All", "Plot Selected","Plot Options"]
+                         "Delete Row", "Select All"]
                 utils = ["View Record", "Formulae->Value", "Export Table"]
                 defaultactions={"Set Fill Color" : lambda : self.setcellColor(rows,cols,key='bg'),
                                 "Set Text Color" : lambda : self.setcellColor(rows,cols,key='fg'),
@@ -1276,8 +1275,6 @@ class TableCanvas(Canvas):
                                 "View Record" : lambda : self.getRecordInfo(row),
                                 "Clear Data" : lambda : self.delete_Cells(rows, cols),
                                 "Select All" : self.select_All,
-                                "Plot Selected" : self.plot_Selected,
-                                "Plot Options" : self.plotSetup,
                                 "Export Table" : self.exportTable,
                                 "Formulae->Value" : lambda : self.convertFormulae(rows, cols)}
 
@@ -1379,51 +1376,6 @@ class TableCanvas(Canvas):
             lists.append(x)
 
         return lists
-
-    def plot_Selected(self):
-        """Plot the selected data using pylab - if possible"""
-        from PylabPlot import pylabPlotter
-        if not hasattr(self, 'pyplot'):
-            self.pyplot = pylabPlotter()
-        plotdata = []
-        for p in self.getSelectionValues():
-            x = []
-            for d in p:
-                try:
-                    x.append(float(d))
-                except:
-                    pass
-            plotdata.append(x)
-
-        pltlabels = self.getplotlabels()
-        #print pltlabels, plotdata
-        if len(pltlabels) > 2:
-            self.pyplot.setDataSeries(pltlabels)
-            self.pyplot.showlegend = 1
-        else:
-            self.pyplot.setxlabel(pltlabels[0])
-            self.pyplot.setylabel(pltlabels[1])
-        self.pyplot.plotCurrent(data=plotdata)
-        return
-
-    def plotSetup(self):
-        """Call pylab plot dialog setup, send data if we haven't already
-            plotted"""
-        from PylabPlot import pylabPlotter
-        if not hasattr(self, 'pyplot'):
-            self.pyplot = pylabPlotter()
-        plotdata = self.getSelectionValues()
-
-        if not self.pyplot.hasData() and plotdata != None:
-            print 'has data'
-            plotdata = self.getSelectionValues()
-            pltlabels = self.getplotlabels()
-            self.pyplot.setDataSeries(pltlabels)
-            self.pyplot.plotSetup(plotdata)
-        else:
-            self.pyplot.plotSetup()
-
-        return
 
     def getplotlabels(self):
         """Get labels for plot series from col labels"""
