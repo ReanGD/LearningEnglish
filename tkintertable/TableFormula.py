@@ -49,7 +49,6 @@ class Formula(object):
         if not type(rec) is DictType:
             return None
         string = rec['formula']
-        #print string
         return string
 
     @classmethod
@@ -60,14 +59,12 @@ class Formula(object):
         p = re.compile('[()*/+-]')
         x = p.split(expr)         
         ops = p.findall(expr) 
-        #print expr, ops
         for i in x:
             if i == '':
                 vals.append(i)
             else:    
                 vals.append(eval(i))        
         
-        #print ops, vals
         return vals, ops
         
     @classmethod
@@ -131,9 +128,7 @@ class Formula(object):
                 return ''
         if vals == '':
             return ''
-        #print vals, ops
         expr = cls.doExpression(vals, ops)
-        #print 'expr', expr                    
         result = eval(expr)
         return str(round(result,3))
     

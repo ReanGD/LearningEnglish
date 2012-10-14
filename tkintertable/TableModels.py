@@ -59,7 +59,6 @@ class TableModel(object):
        
         if not set(self.reclist) == set(self.data.keys()):
             print 'reclist does not match data keys'
-        #restore last column order
         if hasattr(self, 'columnOrder') and self.columnOrder != None:
             self.columnNames=[]
             for i in self.columnOrder.keys():
@@ -106,6 +105,17 @@ class TableModel(object):
         self.reclist = self.data.keys()
         return
 
+    def importList(self, namefields, newdata):
+        self.deleteMultipleColumns()
+        for it in namefields:
+            self.addColumn(it)
+
+        self.deleteRows()
+        for i, row in enumerate(newdata):
+            self.addRow(i)
+            for j, cell in enumerate(row):
+                self.data[i][namefields[j]] = str(cell)
+
     def importDict(self, newdata, namefield=None):
         """Try to create a table model from some arbitrary dict"""
         import types
@@ -125,7 +135,6 @@ class TableModel(object):
             self.addColumn(c)
 
         #add the data
-        #print colnames
         for k in newdata:
             self.addRow(k)
             for c in colnames:
@@ -191,7 +200,6 @@ class TableModel(object):
                 pass
             if w > maxw:
                 maxw = w
-        #print 'longest width', maxw
         return maxw
 
     def getRecordAtRow(self, rowIndex):
@@ -248,7 +256,6 @@ class TableModel(object):
                 temp = copy.deepcopy(self.colors[key][currname])
                 self.colors[key][newname] = temp
                 del self.colors[key][currname]
-        print 'renamed'
         #would also need to resolve all refs to this rec in formulas here!
 
         return
@@ -341,13 +348,10 @@ class TableModel(object):
         """Changes the order of columns"""
         self.oldnames = self.columnNames
         self.columnNames=[]
-        #self.columnOrder=[]
 
-        print oldcolumnIndex, newcolumnIndex
         #write out a new column names list - tedious
         moved = self.oldnames[oldcolumnIndex]
         del self.oldnames[oldcolumnIndex]
-        print self.oldnames
         i=0
         for c in self.oldnames:
             if i==newcolumnIndex:
@@ -359,10 +363,6 @@ class TableModel(object):
         #if new col is at end just append
         if moved not in self.columnNames:
             self.columnNames.append(moved)
-            #self.columnOrder.append(moved)
-
-        print self.columnNames
-  
         return
 
     def addRow(self, name=None, **kwargs):
@@ -392,8 +392,6 @@ class TableModel(object):
         """Delete multiple or all rows"""
         if rowlist == None:
             rowlist = range(len(self.reclist))
-        #print 'deleting' , rowlist
-        #print 'reclist', self.reclist
         for row in rowlist:
             self.deleteRow(row, update=False)
         self.reclist = self.data.keys()
@@ -406,7 +404,6 @@ class TableModel(object):
         if colname == None:
             colname=str(index)
         if colname in self.columnNames:
-            #print 'name is present!'
             return
         self.columnNames.append(colname)
         self.columnlabels[colname] = colname
@@ -420,7 +417,6 @@ class TableModel(object):
     def deleteColumn(self, columnIndex):
         """delete a column"""
         colname = self.getColumnName(columnIndex)
-        print colname
         self.columnNames.remove(colname)
         del self.columnlabels[colname]
         del self.columntypes[colname]
@@ -431,8 +427,6 @@ class TableModel(object):
 
         if hasattr(self, 'sortcolumnIndex') and columnIndex == self.sortcolumnIndex:
             self.setSortOrder()
-        print 'column deleted'
-        print 'new cols:', self.columnNames
         return
 
     def deleteMultipleColumns(self, cols=None):
@@ -454,7 +448,6 @@ class TableModel(object):
         else:
             i=int(rows%25)
             j=int(round(rows/25,1))
-        #print i, j
         for x in range(numrows):
             if i >= len(alphabet):
                 i=0
@@ -465,7 +458,6 @@ class TableModel(object):
             else:
                 self.addRow(name)
             i=i+1
-            #print self.reclist
         return
 
     def auto_AddColumns(self, numcols=None):
@@ -618,16 +610,12 @@ class TableModel(object):
         if filterby != None:
             lexer = shlex.shlex(filterby)
             expr = list(lexer)
-            print expr
             i=0
             for e in range(0,len(expr),3):
-                print e
                 try:
                     criteria.append((expr[e],expr[e+2]))
                 except:
                     pass
-
-            print criteria
 
     def getRowCount(self):
          """Returns the number of rows in the table model."""
@@ -712,8 +700,6 @@ class TableModel(object):
             ncol = thiscol + offset
 
         newrecname, newcolname = self.getRecColNames(nrow, ncol)
-        print 'recname, colname', recname, colname
-        print 'thisrow, col', thisrow, thiscol
         return newrecname, newcolname
 
     def appendtoFormula(self, formula, rowIndex, colIndex):
@@ -731,13 +717,11 @@ class TableModel(object):
         """Copy a formula down or across, using the provided offset"""
         import re
         frmla = Formula.getFormula(cellval)
-        #print 'formula', frmla
 
         newcells=[]
         cells, ops = Formula.readExpression(frmla)
 
         for c in cells:
-            print c
             if type(c) is not ListType:
                 nc = c
             else:

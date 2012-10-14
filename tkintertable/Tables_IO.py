@@ -90,7 +90,6 @@ class TableImporter:
         """Preview loaded file"""
         sep = self.var_sep.get()
         self.previewarea.delete(1.0, END)
-        print 'sep',sep
         reader = csv.reader(open(self.datafile, "rb"), delimiter=sep)
         for row in reader:
             self.previewarea.insert(END,row)
@@ -123,7 +122,6 @@ class TableImporter:
         for rec in dictreader:            
             dictdata[count]=rec
             count=count+1
-        print dictdata 
         
         modeldata={} 
         modeldata['columnnames']=[]
@@ -146,9 +144,6 @@ class TableImporter:
         #now add the data
         for row in dictdata.keys():
             modeldata[row]=dictdata[row]                
-            
-        print '-------MODELDATA------\n',modeldata          
-
         return modeldata
 
     def close(self):

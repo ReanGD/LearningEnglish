@@ -309,7 +309,6 @@ class TableCanvas(Canvas):
         """Respond to a resize event - redraws table"""
         if self.autoresizecols == 1 and event != None:
             self.cellwidth = (event.width - self.x_start - 24) / self.cols
-            #print 'cellwidth', self.cellwidth
             self.redrawTable()
         return
 
@@ -323,7 +322,6 @@ class TableCanvas(Canvas):
 
         for col in range(self.cols):
             width = self.model.getlongestEntry(col) * scale
-            #print 'comparing', width,  self.maxcellwidth
             if width >= self.maxcellwidth:
                 width = self.maxcellwidth
             elif width < self.cellwidth:
@@ -371,7 +369,6 @@ class TableCanvas(Canvas):
 
     def drawNavFrame(self):
         """Draw the frame for selecting pages when paging is on"""
-        #print 'adding page frame'
         import Table_images
         self.navFrame = Frame(self.parentframe)
         self.navFrame.grid(row=4,column=0,columnspan=2,sticky='news',padx=1,pady=1,ipady=1)
@@ -500,11 +497,9 @@ class TableCanvas(Canvas):
     def delete_Row(self):
         """Delete a row"""
         if len(self.multiplerowlist)>1:
-            print 'deleting mult'
             n = tkMessageBox.askyesno("Delete",
                                       "Delete Selected Records?",
                                       parent=self.parentframe)
-            print str(n)
             if n == True:
                 rows = self.multiplerowlist
                 self.model.deleteRows(rows)
@@ -600,7 +595,6 @@ class TableCanvas(Canvas):
                     if findagain == 1 and cell in self.foundlist:
                         continue
                     if text.lower().find(searchstring.lower())!=-1:
-                        print 'found in',row,col
                         found=1
                         #highlight cell
                         self.delete('searchrect')
@@ -669,7 +663,6 @@ class TableCanvas(Canvas):
     
     def resize_Column(self, col, width):
         """Resize a column by dragging"""
-        #print 'resizing column', col
         #recalculate all col positions..
         colname=self.model.getColumnName(col)
         self.model.columnwidths[colname]=width
@@ -713,9 +706,6 @@ class TableCanvas(Canvas):
         y = int(self.canvasy(event.y))
         y_start=self.y_start
         rowc = (int(y)-y_start)/h
-        #rowc = math.floor(rowc)
-        #print 'event.y',event.y, 'y',y
-        #print 'rowclicked', rowc
         return rowc
 
     def get_col_clicked(self,event):
@@ -723,19 +713,15 @@ class TableCanvas(Canvas):
         w=self.cellwidth
         x = int(self.canvasx(event.x))
         x_start=self.x_start
-        #print self.col_positions
         for colpos in self.col_positions:
             try:
                 nextpos=self.col_positions[self.col_positions.index(colpos)+1]
             except:
                 nextpos=self.tablewidth
             if x > colpos and x <= nextpos:
-                #print 'x=', x, 'colpos', colpos, self.col_positions.index(colpos)
                 return self.col_positions.index(colpos)
             else:
-                #print None
                 pass
-        #return colc
 
     def setSelectedRow(self, row):
         """Set currently selected row and reset multiple row list"""
@@ -907,7 +893,6 @@ class TableCanvas(Canvas):
             self.drawMultipleRows(self.multiplerowlist)
             if colclicked not in self.multiplecollist:
                 self.multiplecollist.append(colclicked)
-            #print self.multiplecollist
             self.drawMultipleCells()
         return
 
@@ -928,7 +913,6 @@ class TableCanvas(Canvas):
         if self.check_PageView(rowover) == 1:
             return
         if rowover >= self.rows or self.startrow > self.rows:
-            #print rowover
             return
         else:
             self.endrow = rowover
@@ -941,7 +925,6 @@ class TableCanvas(Canvas):
                 self.multiplecollist=range(self.endcol, self.startcol+1)
             else:
                 self.multiplecollist=range(self.startcol, self.endcol+1)
-            #print self.multiplecollist
         #draw the selected rows
         if self.endrow != self.startrow:
             if self.endrow < self.startrow:
@@ -951,7 +934,6 @@ class TableCanvas(Canvas):
             self.drawMultipleRows(self.multiplerowlist)
             self.tablerowheader.drawSelectedRows(self.multiplerowlist)
             #draw selected cells outline using row and col lists
-            #print self.multiplerowlist
             self.drawMultipleCells()
         else:
             self.multiplerowlist = []
@@ -959,12 +941,10 @@ class TableCanvas(Canvas):
             if len(self.multiplecollist) >= 1:
                 self.drawMultipleCells()
             self.delete('multiplesel')
-        #print self.multiplerowlist
         return
 
     def handle_arrow_keys(self, event):
         """Handle arrow keys press"""
-        #print event.keysym
 
         row = self.get_row_clicked(event)
         col = self.get_col_clicked(event)
@@ -1007,7 +987,6 @@ class TableCanvas(Canvas):
     def handle_double_click(self, event):
         """Do double click stuff. Selected row/cols will already have
            been set with single click binding"""
-        #print 'double click'
         row = self.get_row_clicked(event)
         col = self.get_col_clicked(event)
         absrow = self.get_AbsoluteRow(row)
@@ -1064,7 +1043,6 @@ class TableCanvas(Canvas):
 
     def gotonextCell(self, event):
         """Move highlighted cell to next cell in row or a new col"""
-        #print 'next'
         if hasattr(self, 'cellentry'):
             self.cellentry.destroy()
         self.currentcol=self.currentcol+1
@@ -1098,7 +1076,6 @@ class TableCanvas(Canvas):
     def formula_Dialog(self, row, col, currformula=None):
         """Formula dialog"""
         self.mode = 'formula'
-        print self.mode
         absrow = self.get_AbsoluteRow(row)
         x1,y1,x2,y2 = self.getCellCoords(row,col)
         w=300
@@ -1148,7 +1125,6 @@ class TableCanvas(Canvas):
         if len(self.multiplerowlist) == 0 or len(self.multiplecollist) == 0:
             return None
       
-        print rows, cols
         if cols == None:
             cols = range(self.cols)
         for r in rows:
@@ -1160,7 +1136,6 @@ class TableCanvas(Canvas):
 
     def paste(self, event=None):
         """Copy from clipboard"""
-        print self.parentframe.clipboard_get()
         return
 
     def copyCell(self, rows, cols=None):
@@ -1322,7 +1297,6 @@ class TableCanvas(Canvas):
                     model.setFormulaAt(newval, absr, col)
                 else:
                     model.setValueAt(val, absr, col)
-                #print 'setting', val, 'at row', r
                 i+=1
 
         self.redrawTable()
@@ -1401,7 +1375,6 @@ class TableCanvas(Canvas):
 
         if self.vertlines==1:
             for col in range(cols+1):
-                #print x_pos
                 x=self.col_positions[col]
                 self.create_line(x,y_start,x,y_start+rows*h, tag='gridline',
                                      fill=self.grid_color, width=self.linewidth)
@@ -1579,7 +1552,6 @@ class TableCanvas(Canvas):
         import types
         if type(celltxt) is types.FloatType or type(celltxt) is types.IntType:
             celltxt=str(celltxt)
-        #if cell width is less than x, print nothing
         if w<=15:
             return
 
@@ -2045,7 +2017,6 @@ class ColumnHeader(Canvas):
         else:
             return
 
-        #print self.table.multiplecollist
         for c in self.table.multiplecollist:
             self.draw_rect(c, delete=0)
             self.table.drawSelectedCol(c, delete=0)
@@ -2264,7 +2235,6 @@ class RowHeader(Canvas):
         else:
            rowlist = rows
         for r in rowlist:
-            #print r
             self.draw_rect(r, delete=0)
         return
 
@@ -2405,7 +2375,6 @@ class RecordViewDialog(tkSimpleDialog.Dialog):
                 continue
             val = self.fieldvars[colname].get()            
             model.setValueAt(val, absrow, col)
-            #print 'changed field', colname
         
         self.table.redrawTable()
         return
