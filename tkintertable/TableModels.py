@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #!/usr/bin/env python
 """
     Created Oct 2008
@@ -35,7 +36,6 @@ class TableModel(object):
         self.initialiseFields()
         self.setupModel(newdict, rows, columns)
         #finally set default sort order as first col
-        #self.setSortOrder()
         return
 
     def setupModel(self, newdict, rows=None, columns=None):
@@ -297,20 +297,32 @@ class TableModel(object):
         rowIndex = self.reclist.index(recname)
         return rowIndex
 
-    def setSortOrder(self, columnIndex=0, reverse=0):
+    def setAutoSortOrder(self, columnIndex):
+        if (not hasattr(self, 'sortcolumnIndex')) or (columnIndex != self.sortcolumnIndex):
+            self.setSortOrder(columnIndex, False)
+        else:
+            self.setSortOrder(columnIndex, not self.isReverseSort)
+
+    def setSortOrder(self, columnIndex=0, reverse=False):
         """Changes the order that records are sorted in, which will
            be reflected in the table upon redrawing"""
-        
-        self.sortcolumnIndex = columnIndex    
+        if hasattr(self, 'sortcolumnIndex'):
+            self.relabel_Column(self.sortcolumnIndex, self.getColumnName(self.sortcolumnIndex))
+        self.sortcolumnIndex = columnIndex
+        self.isReverseSort = reverse
+        if reverse:
+            sm = ' ▼'
+        else:
+            sm = ' ▲'
+        self.relabel_Column(self.sortcolumnIndex, self.getColumnName(self.sortcolumnIndex)+sm)
         sortkey = self.getColumnName(columnIndex)
         recnames = self.reclist
         
         self.reclist = self.createSortMap(self.reclist, sortkey, reverse)
         if self.filteredrecs != None:
             self.filteredrecs = self.createSortMap(self.filteredrecs, sortkey, reverse)
-        return
 
-    def createSortMap(self, names, sortkey, reverse=0):
+    def createSortMap(self, names, sortkey, reverse=False):
         """Create a sort mapping for given list"""
         import operator
         recdata = []

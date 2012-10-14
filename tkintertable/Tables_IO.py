@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 #
 # This file is part Protein Engineering Analysis Tool (PEAT)
 # (C) Copyright Jens Erik Nielsen, University College Dublin 2003-

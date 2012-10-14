@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #!/usr/bin/env python
 """
     Created Oct 2008
@@ -48,7 +49,6 @@ class TableCanvas(Canvas):
         self.navFrame = None
         self.currentrow = 0
         self.currentcol = 0
-        self.reverseorder = 0
         #for multiple selections
         self.startrow = self.endrow = None
         self.startcol = self.endcol = None
@@ -163,17 +163,6 @@ class TableCanvas(Canvas):
 
     def setModel(self,model):
         self.model = model
-        return
-
-    def createfromDict(self, data):
-        """Attempt to create a new model/table from a dict"""
-        try:
-            namefield=self.namefield
-        except:
-            namefield=data.keys()[0]
-        self.model = TableModel()
-        self.model.importDict(data, namefield=namefield)
-        self.model.setSortOrder(0,reverse=self.reverseorder)
         return
 
     def createTableFrame(self, callback=None):
@@ -347,13 +336,9 @@ class TableCanvas(Canvas):
 
         return
 
-    def sortTable(self, sortcol=None, reverse=0):
-        """Set up sort order dict based on currently selected field"""
-        #self.sortcol = self.currentcol
-        self.model.setSortOrder(self.currentcol, self.reverseorder)
-        self.reverseorder = reverse
+    def sortTable(self, sortcol):
+        self.model.setAutoSortOrder(sortcol)
         self.redrawTable()
-        return
 
     def set_xviews(self,*args):
         """Set the xview of table and col header"""
@@ -1905,6 +1890,7 @@ class ColumnHeader(Canvas):
         if self.atdivider == 1:
             return
         self.draw_rect(self.table.currentcol)
+        self.table.sortTable(self.table.currentcol)
         #also draw a copy of the rect to be dragged
         self.draggedcol=None
         self.draw_rect(self.table.currentcol, tag='dragrect',
@@ -2030,8 +2016,6 @@ class ColumnHeader(Canvas):
         def popupFocusOut(event):
             popupmenu.unpost()
         popupmenu.add_command(label="Rename Column", command=self.relabel_Column)
-        popupmenu.add_command(label="Sort by "+ collabel, command=self.table.sortTable)
-        popupmenu.add_command(label="Sort by "+ collabel +' (descending)', command=lambda : self.table.sortTable(reverse=1))
         popupmenu.add_command(label="Delete This Column", command=self.table.delete_Column)
         popupmenu.add_command(label="Add New Column", command=self.table.add_Column)
 
