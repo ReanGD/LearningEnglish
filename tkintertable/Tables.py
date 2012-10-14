@@ -57,7 +57,7 @@ class TableCanvas(Canvas):
         self.multiplecollist=[]
         self.col_positions=[]       #record current column grid positions
         self.mode = 'normal'
-        self.editable = True
+        self.editable = False
         self.filtered = False
 
         #set any options passed in kwargs to overwrite defaults/prefs
@@ -456,29 +456,6 @@ class TableCanvas(Canvas):
                 self.redrawTable()
         return
 
-    def add_Column(self, newname=None):
-        """Add a new column"""
-        if newname == None:
-            d = SimpleTableDialog(title="New Column",
-                                  parent=self.parentframe, table=self)
-
-            if d.result == None:
-                return
-            else:
-                coltype = d.result[0]
-                newname = d.result[1]
-                
-        if newname != None:
-            if newname in self.getModel().columnNames:
-                tkMessageBox.showwarning("Name exists",
-                                         "Name already exists!",
-                                         parent=self.parentframe)
-            else:
-                self.model.addColumn(newname, coltype)
-                self.parentframe.configure(width=self.width)
-                self.redrawTable()
-        return
-
     def delete_Row(self):
         """Delete a row"""
         if len(self.multiplerowlist)>1:
@@ -501,18 +478,6 @@ class TableCanvas(Canvas):
                 self.setSelectedRow(row-1)
                 self.clearSelected()
                 self.redrawTable()
-        return
-
-    def delete_Column(self):
-        """Delete currently selected column"""
-        n =  tkMessageBox.askyesno("Delete",
-                                   "Delete This Column?",
-                                   parent=self.parentframe)
-        if n:
-            col = self.getSelectedColumn()
-            self.model.deleteColumn(col)
-            self.currentcol = self.currentcol - 1
-            self.redrawTable()
         return
 
     def delete_Cells(self, rows, cols):
@@ -1826,13 +1791,6 @@ class ColumnHeader(Canvas):
             self.bind("<ButtonRelease-1>", self.handle_left_release)
             self.bind('<B1-Motion>', self.handle_mouse_drag)
             self.bind('<Motion>', self.handle_mouse_move)
-            self.bind('<Shift-Button-1>', self.handle_left_shift_click)
-            if self.table.ostyp=='mac':
-                #For mac we bind Shift, left-click to right click
-                self.bind("<Button-2>", self.handle_right_click)
-                self.bind('<Shift-Button-1>',self.handle_right_click)
-            else:
-                self.bind("<Button-3>", self.handle_right_click)
             self.thefont = self.table.thefont
         return
 
@@ -1875,8 +1833,6 @@ class ColumnHeader(Canvas):
         self.create_line(x,0, x,h, tag='gridline',
                         fill='white', width=2)
 
-        return
-
     def handle_left_click(self,event):
         """Does cell selection when mouse is clicked on canvas"""
         self.delete('rect')
@@ -1889,17 +1845,13 @@ class ColumnHeader(Canvas):
         
         if self.atdivider == 1:
             return
-        self.draw_rect(self.table.currentcol)
         self.table.sortTable(self.table.currentcol)
+        self.draw_rect(self.table.currentcol)
         #also draw a copy of the rect to be dragged
         self.draggedcol=None
-        self.draw_rect(self.table.currentcol, tag='dragrect',
-                        color='red', outline='white')
-        if hasattr(self, 'rightmenu'):
-            self.rightmenu.destroy()
+        self.draw_rect(self.table.currentcol, tag='dragrect', color='red', outline='white')
         #finally, draw the selected col on the table
         self.table.drawSelectedCol()
-        return
 
     def handle_left_release(self,event):
         """When mouse released implement resize or col move"""
@@ -1927,8 +1879,6 @@ class ColumnHeader(Canvas):
             self.table.drawSelectedCol(self.table.currentcol)
             self.draw_rect(self.table.currentcol)
 
-        return
-
     def handle_mouse_drag(self, event):
         """Handle column drag, will be either to move cols or resize"""
         x=int(self.canvasx(event.x))
@@ -1948,15 +1898,12 @@ class ColumnHeader(Canvas):
             y = self.canvasy(event.y)
             self.move('dragrect', x-x1-w/2, 0)
 
-        return
-
     def within(self, val, l, d):
         """Utility funtion to see if val is within d of any
             items in the list l"""
         for v in l:
             if abs(val-v) <= d:
                 return 1
-
         return 0
 
     def handle_mouse_move(self, event):
@@ -1978,64 +1925,6 @@ class ColumnHeader(Canvas):
             self.atdivider = 1
         else:
             self.atdivider = 0
-        return
-
-    def handle_right_click(self, event):
-        """respond to a right click"""
-        self.handle_left_click(event)
-        self.rightmenu = self.popupMenu(event)
-        return
-
-    def handle_right_release(self, event):
-        self.rightmenu.destroy()
-        return
-
-    def handle_left_shift_click(self, event):
-        """Handle shift click, for selecting multiple cols"""
-        self.table.delete('colrect')
-        self.delete('rect')
-        currcol = self.table.currentcol
-        colclicked = self.table.get_col_clicked(event)
-        if colclicked > currcol:
-            self.table.multiplecollist = range(currcol, colclicked+1)
-        elif colclicked < currcol:
-            self.table.multiplecollist = range(colclicked, currcol+1)
-        else:
-            return
-
-        for c in self.table.multiplecollist:
-            self.draw_rect(c, delete=0)
-            self.table.drawSelectedCol(c, delete=0)
-        return
-
-    def popupMenu(self, event):
-        """Add left and right click behaviour for column header"""
-        colname = self.model.columnNames[self.table.currentcol]
-        collabel = self.model.columnlabels[colname]
-        popupmenu = Menu(self, tearoff = 0)
-        def popupFocusOut(event):
-            popupmenu.unpost()
-        popupmenu.add_command(label="Rename Column", command=self.relabel_Column)
-        popupmenu.add_command(label="Delete This Column", command=self.table.delete_Column)
-        popupmenu.add_command(label="Add New Column", command=self.table.add_Column)
-
-        popupmenu.bind("<FocusOut>", popupFocusOut)
-        #self.bind("<Button-3>", popupFocusOut)
-        popupmenu.focus_set()
-        popupmenu.post(event.x_root, event.y_root)
-        return popupmenu
-
-    def relabel_Column(self):
-        col=self.table.currentcol
-        ans = tkSimpleDialog.askstring("New column name?", "Enter new name:")
-        if ans !=None:
-            if ans == '':
-                tkMessageBox.showwarning("Error", "Name should not be blank.")
-                return
-            else:
-                self.model.relabel_Column(col, ans)
-                self.redraw()
-        return
 
     def draw_resize_symbol(self, col):
         """Draw a symbol to show that col can be resized when mouse here"""
@@ -2054,9 +1943,6 @@ class ColumnHeader(Canvas):
             fill='white', outline='gray', width=wdth)
         self.create_polygon(x2+2,h/4, x2+10,h/2, x2+2,h*3/4, tag='resizesymbol',
             fill='white', outline='gray', width=wdth)
-
-
-        return
 
     def draw_rect(self,col, tag=None, color=None, outline=None, delete=1):
         """User has clicked to select a col"""
@@ -2077,7 +1963,6 @@ class ColumnHeader(Canvas):
                                   stipple='gray50',
                                   tag=tag)
         self.lower(tag)
-        return
 
 class RowHeader(Canvas):
     """Class that displays the row headings on the table
