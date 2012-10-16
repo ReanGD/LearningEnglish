@@ -124,7 +124,7 @@ class StatisticDialog(Toplevel):
 		return (_("clm_num"), _("clm_word"), _("clm_transcription"), _("clm_translate"), _("clm_cnt_suc"), _("clm_cnt_err"), _("clm_pers_suc"), _("clm_state"))
 
 	def body(self):
-		fnt = Font(family="Arial", size=10)
+		fnt = Font(family="Arial", size=-13) #10
 		self.tbl_fnt = fnt
 				
 		num_len       = max(fnt.measure(_("clm_num")), fnt.measure("9999"))
@@ -248,11 +248,12 @@ class MainWindow(Tk):
 		self.init_window()
 
 	def init_window(self):
-		fnt_stat          = Font(family="Arial", size=9)
-		fnt_msg           = Font(family="Arial", size=10, weight="bold")
-		fnt_word          = Font(family="Arial", size=14)
-		fnt_transcription = Font(family="Arial", size=10)
-		fnt_translate     = Font(family="Arial", size=12)
+		# 12pt = 16px
+		fnt_stat          = Font(family="Arial", size=-12) #9
+		fnt_msg           = Font(family="Arial", size=-13, weight="bold") #10
+		fnt_word          = Font(family="Arial", size=-19) #14
+		fnt_transcription = Font(family="Arial", size=-13) #10
+		fnt_translate     = Font(family="Arial", size=-16) #12
 
 		########################################################
 
