@@ -334,6 +334,14 @@ class MainWindow(Tk):
 	def show(self):
 		self.deiconify()
 		self.edit_translate.focus()
+		start_time_delay = self.cfg.get_dict()["start_time_delay"]
+
+		if start_time_delay > 0:
+			def enable_edit():
+				self.edit_translate["state"] = "normal"
+				self.edit_translate.focus()
+			self.edit_translate["state"] = "readonly"
+			self.edit_translate.after(start_time_delay*1000, enable_edit)
 
 	def hide(self):
 		self.withdraw()
