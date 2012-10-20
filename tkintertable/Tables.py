@@ -78,12 +78,6 @@ class TableCanvas(Canvas):
         self.tablerowheader = RowHeader(self.parentframe, self)
         self.do_bindings()
 
-        #column specific actions, define for every column type in the model
-        #when you add a column type you should edit this dict
-        self.columnactions = {'text' : {"Edit":  'draw_cellentry' },
-                              'number' : {"Edit": 'draw_cellentry' }}
-        return
-
     def set_defaults(self):
         self.cellwidth=120
         self.maxcellwidth=400
@@ -131,20 +125,8 @@ class TableCanvas(Canvas):
         self.bind("<Shift-Button-1>", self.handle_left_shift_click)
 
         self.bind("<ButtonRelease-1>", self.handle_left_release)
-        if self.ostyp=='mac':
-            #For mac we bind Shift, left-click to right click
-            self.bind("<Button-2>", self.handle_right_click)
-            self.bind('<Shift-Button-1>',self.handle_right_click)
-        else:
-            self.bind("<Button-3>", self.handle_right_click)
-
         self.bind('<B1-Motion>', self.handle_mouse_drag)
         self.bind('<Motion>', self.handle_motion)
-
-        self.bind_all("<Control-x>", self.delete_Row)
-        self.bind_all("<Control-n>", self.add_Row)
-        self.bind_all("<Delete>", self.delete_Cells)
-        self.bind_all("<Control-v>", self.paste)
 
         #if not hasattr(self,'parentapp'):
         #    self.parentapp = self.parentframe
@@ -439,98 +421,6 @@ class TableCanvas(Canvas):
                 return 1
         return 0
 
-    def add_Row(self, rowname=None):
-        """Add a new row"""
-        if rowname == None:
-            rowname = tkSimpleDialog.askstring("New row name?",
-                                               "Enter row name:",
-                                               parent=self.parentframe)
-        if rowname != None:
-            if rowname == '':
-                tkMessageBox.showwarning("Whoops",
-                                         "Name should not be blank.",
-                                         parent=self.parentframe)
-                return
-            if self.getModel().data.has_key(rowname):
-                 tkMessageBox.showwarning("Name exists",
-                                          "Record already exists!",
-                                          parent=self.parentframe)
-            else:
-                self.model.addRow(rowname)
-                self.setSelectedRow(self.model.getRecordIndex(rowname))
-                self.redrawTable()
-        return
-
-    def delete_Row(self):
-        """Delete a row"""
-        if len(self.multiplerowlist)>1:
-            n = tkMessageBox.askyesno("Delete",
-                                      "Delete Selected Records?",
-                                      parent=self.parentframe)
-            if n == True:
-                rows = self.multiplerowlist
-                self.model.deleteRows(rows)
-                self.setSelectedRow(0)
-                self.multiplerowlist = []
-                self.redrawTable()
-        else:            
-            n = tkMessageBox.askyesno("Delete",
-                                      "Delete This Record?",
-                                      parent=self.parentframe)
-            if n:
-                row = self.getSelectedRow()
-                self.model.deleteRow(row)
-                self.setSelectedRow(row-1)
-                self.clearSelected()
-                self.redrawTable()
-        return
-
-    def delete_Cells(self, rows, cols):
-        """Clear the cell contents"""
-        n =  tkMessageBox.askyesno("Clear Confirm",
-                                   "Clear this data?",
-                                   parent=self.parentframe)
-        if not n:
-            return
-        for col in cols:
-            for row in rows:
-                absrow = self.get_AbsoluteRow(row)
-                self.model.deleteCellRecord(row, col)       
-        self.redrawCell(row,col)
-        return
-
-    def autoAdd_Rows(self, numrows=None):
-        """Automatically add x number of records"""
-        import string
-        if numrows == None:
-            numrows = tkSimpleDialog.askinteger("Auto add rows.",
-                                                "How many empty rows?",
-                                                parent=self.parentframe)
-
-        self.model.auto_AddRows(numrows)
-        self.redrawTable()
-        return
-
-    def autoAdd_Columns(self, numcols=None):
-        """Automatically add x number of cols"""
-        if numcols == None:
-            numcols = tkSimpleDialog.askinteger("Auto add rows.",
-                                                "How many empty columns?",
-                                                parent=self.parentframe)
-        self.model.auto_AddColumns(numcols)
-        self.parentframe.configure(width=self.width)
-        self.redrawTable()
-        return
-
-    def getRecordInfo(self, row):
-        """Show the record for this row"""
-        model = self.model
-        #We need a custom dialog for allowing field entries here
-        absrow = self.get_AbsoluteRow(row)
-        d = RecordViewDialog(title="Record Details",
-                                  parent=self.parentframe, table=self, row=absrow)
-        return
-
     def findValue(self, searchstring=None, findagain=None):
         """Return the row/col for the input value"""
         if searchstring == None:
@@ -700,14 +590,6 @@ class TableCanvas(Canvas):
         """Get currently selected column"""
         return self.currentcol
 
-    def select_All(self):
-        """Select all rows"""
-        self.startrow = 0
-        self.endrow = self.rows
-        self.multiplerowlist = range(self.startrow,self.endrow)
-        self.drawMultipleRows(self.multiplerowlist)
-        return
-
     def getCellCoords(self, row, col):
         """Get x-y coordinates to drawing a cell in a given row/col"""        
         colname=self.model.getColumnName(col)
@@ -806,11 +688,6 @@ class TableCanvas(Canvas):
             return
         if hasattr(self, 'cellentry'):
             self.cellentry.destroy()
-        #ensure popup menus are removed if present
-        if hasattr(self, 'rightmenu'):
-            self.rightmenu.destroy()
-        if hasattr(self.tablecolheader, 'rightmenu'):
-            self.tablecolheader.rightmenu.destroy()
         if self.check_PageView(rowclicked) == 1:
             return
 
@@ -953,37 +830,6 @@ class TableCanvas(Canvas):
         #self.draw_cellentry(self.currentrow, self.currentcol)
         return
 
-    def handle_right_click(self, event):
-        """respond to a right click"""
-        self.delete('tooltip')
-        self.tablerowheader.clearSelected()
-        if hasattr(self, 'rightmenu'):
-            self.rightmenu.destroy()
-        rowclicked = self.get_row_clicked(event)
-        colclicked = self.get_col_clicked(event)
-        if colclicked == None:
-            self.rightmenu = self.popupMenu(event, outside=1)
-            return
-        if self.check_PageView(rowclicked) == 1:
-            self.rightmenu = self.popupMenu(event, outside=1)
-            return
-
-        if (rowclicked in self.multiplerowlist or self.allrows == True) and colclicked in self.multiplecollist:
-            self.rightmenu = self.popupMenu(event, rows=self.multiplerowlist, cols=self.multiplecollist)
-        else:
-            if 0 <= rowclicked < self.rows and 0 <= colclicked < self.cols:
-                self.clearSelected()
-                self.allrows = False
-                self.setSelectedRow(rowclicked)
-                self.setSelectedCol(colclicked)
-                self.draw_selected_rect(self.currentrow, self.currentcol)
-                self.drawSelectedRow()
-            if self.isInsideTable(event.x,event.y) == 1:
-                self.rightmenu = self.popupMenu(event,rows=self.multiplerowlist, cols=self.multiplecollist)
-            else:
-                self.rightmenu = self.popupMenu(event, outside=1)
-        return
-
     def handle_motion(self, event):
         """Handle mouse motion on table"""
         self.delete('tooltip')
@@ -1075,210 +921,7 @@ class TableCanvas(Canvas):
         self.formulaText.focus_set()
         return
 
-    def convertFormulae(self, rows, cols=None):
-        """Convert the formulas in the cells to their result values"""
-        if len(self.multiplerowlist) == 0 or len(self.multiplecollist) == 0:
-            return None
-      
-        if cols == None:
-            cols = range(self.cols)
-        for r in rows:
-            absr=self.get_AbsoluteRow(r)
-            for c in cols:
-                val = self.model.getValueAt(absr,c)
-                self.model.setValueAt(val, absr, c)
-        return
-
-    def paste(self, event=None):
-        """Copy from clipboard"""
-        return
-
-    def copyCell(self, rows, cols=None):
-        """Copy cell contents to a temp internal clipboard"""
-        row = rows[0]; col = cols[0]
-        absrow = self.get_AbsoluteRow(row)
-        import copy
-        self.clipboard = copy.deepcopy(self.model.getCellRecord(absrow, col))
-        return
-
-    def pasteCell(self, rows, cols=None):
-        """Paste cell from internal clipboard"""
-        row = rows[0]; col = cols[0]
-        absrow = self.get_AbsoluteRow(row)
-        val = self.clipboard
-        self.model.setValueAt(val, absrow, col)
-        self.redrawTable()
-        return
-
-    def copyColumns(self):
-        """Copy current selected cols"""
-        M = self.model
-        coldata = {}
-        for col in self.multiplecollist:
-            name = M.columnNames[col]
-            coldata[name] = M.getColumnData(columnName=name)       
-        return coldata
-        
-    def pasteColumns(self, coldata):
-        """Paste new cols, overwrites existing names"""
-        M = self.model        
-        for name in coldata:            
-            if name not in M.columnNames:
-                M.addColumn(name)            
-            for r in range(len(coldata[name])):
-                val = coldata[name][r]
-                col = M.columnNames.index(name)                
-                if r >= self.rows:
-                    break                 
-                M.setValueAt(val, r, col)            
-        self.redrawTable()
-        return coldata       
-        
-    # --- Some cell specific actions here ---
-
-    def setcellColor(self, rows, cols=None, newColor=None, key=None, redraw=True):
-        """Set the cell color for one or more cells and save it in the model color"""
-
-        model = self.getModel()
-        if newColor == None:
-            import tkColorChooser
-            ctuple, newColor = tkColorChooser.askcolor(title='pick a color')
-            if newColor == None:
-                return
-
-        if type(rows) is IntType:
-            x=rows
-            rows=[]
-            rows.append(x)
-        if self.allrows == True:
-            #we use all rows if the whole column has been selected
-            rows = range(0,self.rows)
-        if cols == None:
-            cols = range(self.cols)
-        for col in cols:
-            for row in rows:
-                absrow = self.get_AbsoluteRow(row)
-                model.setColorAt(absrow, col, color=newColor, key=key)
-                #setcolor(absrow, col)
-        if redraw == True:
-            self.redrawTable()
-        return
-
-
-    def popupMenu(self, event, rows=None, cols=None, outside=None):
-        """Add left and right click behaviour for canvas, should not have to override
-            this function, it will take its values from defined dicts in constructor"""
-        if outside == None:
-            row = self.get_row_clicked(event)
-            col = self.get_col_clicked(event)
-            coltype = self.model.getColumnType(col)
-        popupmenu = Menu(self, tearoff = 0)
-        def popupFocusOut(event):
-            popupmenu.unpost()
-
-        if outside == 1:
-            #if outside table, just show general items            
-            popupmenu.add_command(label="Export Table", command= self.exportTable)
-            popupmenu.add_command(label="Filter Recs", command= self.showFilteringBar)
-        else:
-            def add_commands(fieldtype):
-                """Add commands to popup menu for col type"""
-                #add column actions for this table type defined in self.columnactions
-                functions = self.columnactions[fieldtype]
-                for f in functions.keys():
-                    func = getattr(self, functions[f])
-                    popupmenu.add_command(label=f, command= lambda : func(row,col))
-                return
-
-            def add_defaultcommands():
-                """now add general actions for all cells"""
-                main = ["Set Fill Color","Set Text Color","Copy", "Paste", "Fill Down","Fill Right", "Clear Data",
-                         "Delete Row", "Select All"]
-                utils = ["View Record", "Formulae->Value", "Export Table"]
-                defaultactions={"Set Fill Color" : lambda : self.setcellColor(rows,cols,key='bg'),
-                                "Set Text Color" : lambda : self.setcellColor(rows,cols,key='fg'),
-                                "Copy" : lambda : self.copyCell(rows, cols),
-                                "Paste" : lambda : self.pasteCell(rows, cols),
-                                "Fill Down" : lambda : self.fill_down(rows, cols),
-                                "Fill Right" : lambda : self.fill_across(cols, rows),
-                                "Delete Row" : lambda : self.delete_Row(),
-                                "View Record" : lambda : self.getRecordInfo(row),
-                                "Clear Data" : lambda : self.delete_Cells(rows, cols),
-                                "Select All" : self.select_All,
-                                "Export Table" : self.exportTable,
-                                "Formulae->Value" : lambda : self.convertFormulae(rows, cols)}
-
-                for action in main:
-                    if action == 'Fill Down' and (rows == None or len(rows) <= 1):
-                        continue
-                    if action == 'Fill Right' and (cols == None or len(cols) <= 1):
-                        continue
-                    else:
-                        popupmenu.add_command(label=action, command=defaultactions[action])
-                popupmenu.add_separator()
-                utilsmenu = Menu(popupmenu, tearoff = 0)
-                popupmenu.add_cascade(label="Utils",menu=utilsmenu)
-                for action in utils:
-                    utilsmenu.add_command(label=action, command=defaultactions[action])
-                return
-
-            if self.columnactions.has_key(coltype):
-                add_commands(coltype)
-            add_defaultcommands()
-
-        popupmenu.bind("<FocusOut>", popupFocusOut)
-        popupmenu.focus_set()
-        popupmenu.post(event.x_root, event.y_root)
-        return popupmenu
-
     # --- spreadsheet type functions ---
-
-    def fill_down(self, rowlist, collist):
-        """Fill down a column, or multiple columns"""
-        model = self.model
-        absrow  = self.get_AbsoluteRow(rowlist[0])
-        #remove first element as we don't want to overwrite it
-        rowlist.remove(rowlist[0])
-
-        #if this is a formula, we have to treat it specially
-        for col in collist:
-            val = self.model.getCellRecord(absrow, col)
-            f=val #formula to copy
-            i=1
-            for r in rowlist:
-                absr = self.get_AbsoluteRow(r)
-                if Formula.isFormula(f):
-                    newval = model.copyFormula(f, absr, col, offset=i)
-                    model.setFormulaAt(newval, absr, col)
-                else:
-                    model.setValueAt(val, absr, col)
-                i+=1
-
-        self.redrawTable()
-        return
-
-    def fill_across(self, collist, rowlist):
-        """Fill across a row, or multiple rows"""
-        model = self.model
-        #row = self.currentrow
-        #absrow  = self.get_AbsoluteRow(collist[0])
-        frstcol = collist[0]
-        collist.remove(frstcol)
-
-        for row in rowlist:
-            absr = self.get_AbsoluteRow(row)
-            val = self.model.getCellRecord(absr, frstcol)
-            f=val     #formula to copy
-            i=1
-            for c in collist:
-                if Formula.isFormula(f):
-                    newval = model.copyFormula(f, absr, c, offset=i, dim='x')
-                    model.setFormulaAt(newval, absr, c)
-                else:
-                    model.setValueAt(val, absr, c)
-                i+=1
-        self.redrawTable()
-        return
 
     def getSelectionValues(self):
         """Get values for current multiple cell selection"""
@@ -1742,13 +1385,6 @@ class TableCanvas(Canvas):
 
         return progress_win
 
-    def exportTable(self, filename=None):
-        """Do a simple export of the cell contents to csv"""
-        from Tables_IO import TableExporter
-        exporter = TableExporter()
-        exporter.ExportTableData(self)
-        return
-
     @classmethod
     def checkOSType(cls):
         """Check the OS we are in"""
@@ -1949,10 +1585,7 @@ class RowHeader(Canvas):
             self.bind('<Button-1>',self.handle_left_click)
             self.bind("<ButtonRelease-1>", self.handle_left_release)
             self.bind("<Control-Button-1>", self.handle_left_ctrl_click)
-            self.bind('<Button-3>',self.handle_right_click)
             self.bind('<B1-Motion>', self.handle_mouse_drag)
-            #self.bind('<Shift-Button-1>', self.handle_left_shift_click)
-        return
 
     def redraw(self, paging = 0):
         """Redraw row header"""
@@ -2017,10 +1650,6 @@ class RowHeader(Canvas):
                 multirowlist.remove(rowclicked)
             self.table.drawMultipleRows(multirowlist)
             self.drawSelectedRows(multirowlist)
-        return
-
-    def handle_right_click(self,event):
-
         return
 
     def handle_mouse_drag(self, event):
@@ -2107,108 +1736,3 @@ class AutoScrollbar(Scrollbar):
         raise TclError, "cannot use pack with this widget"
     def place(self, **kw):
         raise TclError, "cannot use place with this widget"
-
-
-class SimpleTableDialog(tkSimpleDialog.Dialog):
-    """Simple dialog to get data for new cols and rows"""
-
-    def __init__(self, parent, title=None, table=None):
-        if table != None:
-            self.items = table.getModel().getDefaultTypes()
-        else:
-            self.items=['text','number']
-        tkSimpleDialog.Dialog.__init__(self, parent, title)
-
-
-    def body(self, master):
-
-        Label(master, text="Column Type:").grid(row=0)
-        Label(master, text="Name:").grid(row=1)
-        self.v1=StringVar()
-        self.v1.set('text')
-        self.b1 = Menubutton(master,textvariable=self.v1,relief=RAISED)
-        self.menu=Menu(self.b1,tearoff=0)
-        self.b1['menu']=self.menu
-
-        for option in self.items:
-            self.menu.add_radiobutton(label=option,
-                                          variable=self.v1,
-                                          value=option,
-                                          indicatoron=1)
-        self.e2 = Entry(master)
-
-        self.b1.grid(row=0, column=1,padx=2,pady=2,sticky='news')
-        self.e2.grid(row=1, column=1,padx=2,pady=2,sticky='news')
-        return self.b1 # initial focus
-
-    def apply(self):
-        first = self.v1.get()
-        second = self.e2.get()
-        self.result = first, second
-        return
-
-class RecordViewDialog(tkSimpleDialog.Dialog):
-    """Dialog for viewing and editing table records"""
-
-    def __init__(self, parent, title=None, table=None, row=None):
-        if table != None:
-            self.table = table
-            self.model = table.getModel()
-            self.row = row
-            self.recdata = self.model.getRecordAtRow(row)
-            self.recname = self.model.getRecName(row)
-        else:
-            return
-        tkSimpleDialog.Dialog.__init__(self, parent, title)
-        return
-
-    def body(self, master):
-        """Show all record fields in entry fields or labels"""
-        model = self.model        
-        cols = self.recdata.keys()
-        self.editable = []
-        self.fieldnames = {}
-        self.fieldvars = {}
-        self.fieldvars['Name'] = StringVar()
-        self.fieldvars['Name'].set(self.recname)
-        Label(master, text='Rec Name:').grid(row=0,column=0,padx=2,pady=2,sticky='news')
-        Entry(master, textvariable=self.fieldvars['Name'],
-                relief=GROOVE,bg='yellow').grid(row=0,column=1,padx=2,pady=2,sticky='news')
-        i=1
-        for col in cols:
-            self.fieldvars[col] = StringVar()
-            if self.recdata.has_key(col):
-                val = self.recdata[col]
-                self.fieldvars[col].set(val)
-            self.fieldnames[col] = Label(master, text=col).grid(row=i,column=0,padx=2,pady=2,sticky='news')
-            ent = Entry(master, textvariable=self.fieldvars[col], relief=GROOVE,bg='white')
-            ent.grid(row=i,column=1,padx=2,pady=2,sticky='news')
-            if not type(self.recdata[col]) is StringType:
-                ent.config(state=DISABLED)
-            else:
-                self.editable.append(col)
-            i+=1
-        top=self.winfo_toplevel()
-        top.columnconfigure(1,weight=1)
-        return
-
-    def apply(self):
-        """apply"""
-        cols = self.table.cols
-        model = self.model
-        absrow = self.table.get_AbsoluteRow(self.row)
-        newname = self.fieldvars['Name'].get()
-        if newname != self.recname:
-            model.setRecName(newname, absrow)
-       
-        for col in range(cols):
-            colname = model.getColumnName(col)
-            if not colname in self.editable:
-                continue          
-            if not self.fieldvars.has_key(colname):
-                continue
-            val = self.fieldvars[colname].get()            
-            model.setValueAt(val, absrow, col)
-        
-        self.table.redrawTable()
-        return
