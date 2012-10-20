@@ -310,11 +310,11 @@ class TableModel(object):
             self.relabel_Column(self.sortcolumnIndex, self.getColumnName(self.sortcolumnIndex))
         self.sortcolumnIndex = columnIndex
         self.isReverseSort = reverse
-        if reverse:
-            sm = ' ▼'
-        else:
-            sm = ' ▲'
-        self.relabel_Column(self.sortcolumnIndex, self.getColumnName(self.sortcolumnIndex)+sm)
+        # if reverse:
+        #     sm = ' ▼'
+        # else:
+        #     sm = ' ▲'
+        # self.relabel_Column(self.sortcolumnIndex, self.getColumnName(self.sortcolumnIndex)+sm)
         sortkey = self.getColumnName(columnIndex)
         recnames = self.reclist
         
@@ -351,10 +351,16 @@ class TableModel(object):
     
     def getSortIndex(self):
         """Return the current sort order index"""
-        if self.sortcolumnIndex:
+        if hasattr(self, 'sortcolumnIndex'):
             return self.sortcolumnIndex
         else:
-            return 0
+            return None
+
+    def getIsReverseSort(self):
+        if hasattr(self, 'isReverseSort'):
+            return self.isReverseSort
+        else:
+            return False
 
     def moveColumn(self, oldcolumnIndex, newcolumnIndex):
         """Changes the order of columns"""

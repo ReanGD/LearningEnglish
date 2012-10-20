@@ -74,7 +74,7 @@ class TableCanvas(Canvas):
         self.rows=self.model.getRowCount()
         self.cols=self.model.getColumnCount()
         self.tablewidth=(self.cellwidth)*self.cols
-        self.tablecolheader = ColumnHeader(self.parentframe, self)
+        self.tablecolheader = ColumnHeader(self.parentframe, self, self.header_cfg)
         self.tablerowheader = RowHeader(self.parentframe, self)
         self.do_bindings()
 
@@ -106,7 +106,12 @@ class TableCanvas(Canvas):
         self.selectedcolor = 'yellow'
         self.rowselectedcolor = '#CCCCFF'
         self.multipleselectioncolor = '#ECD672'
-        return
+        self.header_cfg = {
+             "height"   : 20
+            ,"font"     : ("Arial", 11, "normal")
+            ,"bg_clr"   : "gray25"
+            ,"font_clr" : "white"
+            }
 
     def mouse_wheel(self, event):
         """Handle mouse wheel scroll for windows"""
@@ -663,13 +668,13 @@ class TableCanvas(Canvas):
         w=self.cellwidth
         x = int(self.canvasx(event.x))
         x_start=self.x_start
-        for colpos in self.col_positions:
+        for ind, colpos in enumerate(self.col_positions):
             try:
-                nextpos=self.col_positions[self.col_positions.index(colpos)+1]
+                nextpos=self.col_positions[ind+1]
             except:
                 nextpos=self.tablewidth
             if x > colpos and x <= nextpos:
-                return self.col_positions.index(colpos)
+                return ind
             else:
                 pass
 
@@ -1777,57 +1782,61 @@ class ColumnHeader(Canvas):
     """Class that takes it's size and rendering from a parent table
         and column names from the table model."""
 
-    def __init__(self, parent=None, table=None):
-        Canvas.__init__(self, parent, bg='gray25', width=500, height=20)
-        self.thefont='Arial 14'
-        if table != None:
-            self.table = table
-            self.height = 20
-            self.model = self.table.getModel()
-            self.config(width=self.table.width)
-            #self.colnames = self.model.columnNames
-            self.columnlabels = self.model.columnlabels
-            self.bind('<Button-1>',self.handle_left_click)
-            self.bind("<ButtonRelease-1>", self.handle_left_release)
-            self.bind('<B1-Motion>', self.handle_mouse_drag)
-            self.bind('<Motion>', self.handle_mouse_move)
-            self.thefont = self.table.thefont
-        return
+    def __init__(self, parent, table, cfg):
+        Canvas.__init__(self, parent, bg=cfg["bg_clr"], width=table.width, height=cfg["height"])
+        self.table    = table
+        self.height   = cfg["height"]
+        fnt           = cfg["font"]
+        self.thefont  = tkFont.Font(family=fnt[0], size=fnt[1], weight=fnt[2])
+        self.model    = self.table.getModel()
+        self.font_clr = cfg["font_clr"]
+        self.bind("<Button-1>",        self.handle_left_click)
+        self.bind("<ButtonRelease-1>", self.handle_left_release)
+        self.bind("<B1-Motion>",       self.handle_mouse_drag)
+        self.bind("<Motion>",          self.handle_mouse_move)
 
     def redraw(self):
         cols=self.model.getColumnCount()
         self.tablewidth=self.table.tablewidth
         self.configure(scrollregion=(0,0, self.table.tablewidth+self.table.x_start, self.height))
         self.delete('gridline','text')
-        self.delete('rect')
         self.atdivider = None
 
-        h=self.height
-        x_start=self.table.x_start
         if cols == 0:
             return
+
+        SortIndex = self.model.getSortIndex()
+        if self.model.getIsReverseSort():
+            order_ch = ' ▼'
+        else:
+            order_ch = ' ▲'
+        h = self.height
+        columnlabels = self.model.columnlabels
+
         for col in range(cols):
             colname=self.model.columnNames[col]
-            if not self.model.columnlabels.has_key(colname):
-                self.model.columnlabels[colname]=colname
-            collabel = self.model.columnlabels[colname]
+            if not columnlabels.has_key(colname):
+                columnlabels[colname]=colname
             if self.model.columnwidths.has_key(colname):
                 w=self.model.columnwidths[colname]
             else:
                 w=self.table.cellwidth
             x=self.table.col_positions[col]
 
-            if len(collabel)>w/10:
-                collabel=collabel[0:int(w)/12]+'.'
+            if SortIndex == col:
+                dop_sm = order_ch
+            else:
+                dop_sm = ''
+            collabel = self.get_clipped_colname(columnlabels[colname], dop_sm, self.thefont, w)
+
             line = self.create_line(x, 0, x, h, tag=('gridline', 'vertline'),
                                  fill='white', width=2)
 
             self.create_text(x+w/2,h/2,
                                 text=collabel,
-                                fill='white',
+                                fill=self.font_clr,
                                 font=self.thefont,
                                 tag='text')
-
 
         x=self.table.col_positions[col+1]
         self.create_line(x,0, x,h, tag='gridline',
@@ -1835,29 +1844,23 @@ class ColumnHeader(Canvas):
 
     def handle_left_click(self,event):
         """Does cell selection when mouse is clicked on canvas"""
-        self.delete('rect')
         self.table.delete('entry')
         self.table.delete('multicellrect')
-        colclicked = self.table.get_col_clicked(event)
         #set all rows selected
         self.table.allrows = True
-        self.table.setSelectedCol(colclicked)
         
         if self.atdivider == 1:
-            return
-        self.table.sortTable(self.table.currentcol)
-        self.draw_rect(self.table.currentcol)
-        #also draw a copy of the rect to be dragged
-        self.draggedcol=None
-        self.draw_rect(self.table.currentcol, tag='dragrect', color='red', outline='white')
-        #finally, draw the selected col on the table
-        self.table.drawSelectedCol()
+            x=int(self.canvasx(event.x))          
+            self.table.setSelectedCol(self.get_col_for_resize(x))
+        else:
+            colclicked = self.table.get_col_clicked(event)
+            self.table.setSelectedCol(colclicked)
+            self.table.sortTable(colclicked)
 
     def handle_left_release(self,event):
-        """When mouse released implement resize or col move"""
-        self.delete('dragrect')
+        """When mouse released implement col move"""
+        self.delete('resizesymbol')
         if self.atdivider == 1:
-            #col = self.table.get_col_clicked(event)
             x=int(self.canvasx(event.x))
             col = self.table.currentcol
             x1,y1,x2,y2 = self.table.getCellCoords(0,col)
@@ -1867,20 +1870,10 @@ class ColumnHeader(Canvas):
             self.table.resize_Column(col, newwidth)
             self.table.delete('resizeline')
             self.delete('resizeline')
-            self.delete('resizesymbol')
             self.atdivider = 0
-            return
-        self.delete('resizesymbol')
-        #move column
-        if self.draggedcol != None and self.table.currentcol != self.draggedcol:
-            self.model.moveColumn(self.table.currentcol, self.draggedcol)
-            self.table.setSelectedCol(self.draggedcol)
-            self.table.redrawTable()
-            self.table.drawSelectedCol(self.table.currentcol)
-            self.draw_rect(self.table.currentcol)
 
     def handle_mouse_drag(self, event):
-        """Handle column drag, will be either to move cols or resize"""
+        """Handle column drag, will be either to resize cols"""
         x=int(self.canvasx(event.x))
         if self.atdivider == 1:
             self.table.delete('resizeline')
@@ -1889,80 +1882,52 @@ class ColumnHeader(Canvas):
                                 width=2, fill='gray', tag='resizeline')
             self.create_line(x, 0, x, self.height,
                                 width=2, fill='gray', tag='resizeline')
-            return
-        else:
-            w = self.table.cellwidth
-            self.draggedcol = self.table.get_col_clicked(event)
-            x1, y1, x2, y2 = self.coords('dragrect')
-            x=int(self.canvasx(event.x))
-            y = self.canvasy(event.y)
-            self.move('dragrect', x-x1-w/2, 0)
-
-    def within(self, val, l, d):
-        """Utility funtion to see if val is within d of any
-            items in the list l"""
-        for v in l:
-            if abs(val-v) <= d:
-                return 1
-        return 0
 
     def handle_mouse_move(self, event):
         """Handle mouse moved in header, if near divider draw resize symbol"""
         self.delete('resizesymbol')
-        w=self.table.cellwidth
-        h=self.height
-        x_start=self.table.x_start
-        #x = event.x
-        x=int(self.canvasx(event.x))
-        if x > self.tablewidth+w:
-            return
-        #if event x is within x pixels of divider, draw resize symbol
-        if x!=x_start and self.within(x, self.table.col_positions, 4):
-            col = self.table.get_col_clicked(event)
+
+        x = int(self.canvasx(event.x))
+        if self.table.x_start < x < (self.tablewidth+self.table.cellwidth):
+            col = self.get_col_for_resize(x)
             if col == None:
-                return
-            self.draw_resize_symbol(col)
-            self.atdivider = 1
+                self.atdivider = 0
+            else:
+                self.atdivider = 1
+                self.draw_resize_symbol(col)
+
+    def get_clipped_colname(self, text, dop_sm, font, max_width):
+        new_text = text+dop_sm
+        if font.measure(new_text) <= max_width:
+            return new_text
+        for i in range(len(text)-1, 0, -1):
+            new_text = text[:i] + '.' + dop_sm
+            if font.measure(new_text) <= max_width:
+                return new_text
+        new_text = dop_sm
+        if font.measure(new_text) <= max_width:
+            return new_text
         else:
-            self.atdivider = 0
+            return ''
+
+    def get_col_for_resize(self, pos_x):
+        dt = 10
+        for i, pos in enumerate(self.table.col_positions):
+            if i > 0 and abs(pos_x-pos) <= dt:
+                return i-1
+        return None
 
     def draw_resize_symbol(self, col):
         """Draw a symbol to show that col can be resized when mouse here"""
         self.delete('resizesymbol')
-        w=self.table.cellwidth
+        
         h=self.height
-        #if x_pos > self.tablewidth:
-        #    return
-        wdth=1
-        hfac1=0.2
-        hfac2=0.4
-        x_start=self.table.x_start
         x1,y1,x2,y2 = self.table.getCellCoords(0,col)
 
         self.create_polygon(x2-3,h/4, x2-10,h/2, x2-3,h*3/4, tag='resizesymbol',
-            fill='white', outline='gray', width=wdth)
+            fill='white', outline='gray', width=1)
         self.create_polygon(x2+2,h/4, x2+10,h/2, x2+2,h*3/4, tag='resizesymbol',
-            fill='white', outline='gray', width=wdth)
-
-    def draw_rect(self,col, tag=None, color=None, outline=None, delete=1):
-        """User has clicked to select a col"""
-        if tag==None:
-            tag='rect'
-        if color==None:
-            color='#0099CC'
-        if outline==None:
-            outline='gray25'
-        if delete == 1:
-            self.delete(tag)
-        w=2
-        x1,y1,x2,y2 = self.table.getCellCoords(0,col)
-        rect = self.create_rectangle(x1,y1-w,x2,self.height,
-                                  fill=color,
-                                  outline=outline,
-                                  width=w,
-                                  stipple='gray50',
-                                  tag=tag)
-        self.lower(tag)
+            fill='white', outline='gray', width=1)
 
 class RowHeader(Canvas):
     """Class that displays the row headings on the table
