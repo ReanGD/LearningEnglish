@@ -87,7 +87,7 @@ class TableCanvas(Canvas):
         self.alternaterows=0
         self.autoresizecols = 0
         self.paging = 0
-        self.rowsperpage = 50
+        self.rowsperpage = 100
         self.inset=2
         self.x_start=0
         self.y_start=1
@@ -107,16 +107,6 @@ class TableCanvas(Canvas):
             ,"font_clr" : "white"
             }
 
-    def mouse_wheel(self, event):
-        """Handle mouse wheel scroll for windows"""
-        if event.num == 5 or event.delta == -120:
-            event.widget.yview_scroll(1, UNITS)
-            self.tablerowheader.yview_scroll(1, UNITS)
-        if event.num == 4 or event.delta == 120:
-            event.widget.yview_scroll(-1, UNITS)
-            self.tablerowheader.yview_scroll(-1, UNITS)
-        return
-
     def do_bindings(self):
         """Bind keys and mouse clicks, this can be overriden"""
         self.bind("<Button-1>",self.handle_left_click)
@@ -128,21 +118,21 @@ class TableCanvas(Canvas):
         self.bind('<B1-Motion>', self.handle_mouse_drag)
         self.bind('<Motion>', self.handle_motion)
 
-        #if not hasattr(self,'parentapp'):
-        #    self.parentapp = self.parentframe
+        self.parentframe.master.bind_all("<Up>",     self.handle_arrow_keys)
+        self.parentframe.master.bind_all("<Down>",   self.handle_arrow_keys)
+        self.parentframe.master.bind_all("<Right>",  self.handle_arrow_keys)
+        self.parentframe.master.bind_all("<Left>",   self.handle_arrow_keys)
+        self.parentframe.master.bind_all("<Prior>",  self.handle_arrow_keys)
+        self.parentframe.master.bind_all("<Next>",   self.handle_arrow_keys)
+        self.parentframe.master.bind_all("<Home>",   self.handle_arrow_keys)
+        self.parentframe.master.bind_all("<End>",    self.handle_arrow_keys)
 
-        self.parentframe.master.bind_all("<Right>", self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<Left>", self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<Up>", self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<Down>", self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<KP_8>", self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<Return>", self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<Tab>", self.handle_arrow_keys)
-        if 'windows' in self.platform:
-            self.bind("<MouseWheel>", self.mouse_wheel)
-        self.bind('<Button-4>', self.mouse_wheel)
-        self.bind('<Button-5>', self.mouse_wheel)
-        return
+        self.parentframe.master.bind_all("<MouseWheel>",
+            lambda event=None: self.mouse_wheel(-math.trunc(math.copysign(1, event.delta))))
+        self.parentframe.master.bind_all('<Button-4>',
+            lambda event=None: self.mouse_wheel(-1))
+        self.parentframe.master.bind_all('<Button-5>',
+            lambda event=None: self.mouse_wheel(1))
 
     def getModel(self):
         """Get the current table model"""
@@ -221,7 +211,7 @@ class TableCanvas(Canvas):
             if upper>=self.rows:
                 upper=self.rows
             self.rowrange=range(lower,upper)
-            self.configure(scrollregion=(0,0, self.tablewidth+self.x_start, self.rowheight*self.rowsperpage+10))
+            self.configure(scrollregion=(0,0, self.tablewidth+self.x_start, self.rowheight*len(self.rowrange)+10))
         else:
             self.rowrange = range(0,self.rows)
             self.configure(scrollregion=(0,0, self.tablewidth+self.x_start, self.rowheight*self.rows+10))
@@ -615,7 +605,7 @@ class TableCanvas(Canvas):
             return None, None
         x1,y1,x2,y2 = self.getCellCoords(row,col)
         cx=float(x1)/self.tablewidth
-        cy=float(y1)/(self.rows*self.rowheight)        
+        cy=float(y1)/(self.rows*self.rowheight)
         return cx, cy
 
     def isInsideTable(self,x,y):
@@ -775,46 +765,69 @@ class TableCanvas(Canvas):
             self.delete('multiplesel')
         return
 
+    def scroll_table_by_y(self, cnt):
+        row_cnt = len(self.rowrange)
+        h       = float(self.rowheight)
+        self.currentrow = min(max(self.currentrow + cnt, 0), row_cnt-1)
+
+        x1, y1, x2, y2 = self.getCellCoords(self.currentrow, 0)
+        screen_y1 = self.canvasy(0)
+        screen_y2 = screen_y1 + self.winfo_height()
+        if y2 > screen_y2:
+            screen_pos = screen_y1 + (y2 - screen_y2) + 5
+        elif y1 < screen_y1:
+            screen_pos = float(y1)
+        else:
+            return
+        canvas_pos = float(screen_pos)/(row_cnt*h+10.0)
+        self.yview('moveto', canvas_pos)
+        self.tablerowheader.yview('moveto', canvas_pos)
+
+    def scroll_table_by_x(self, cnt):
+        self.currentcol = min(max(self.currentcol + cnt, 0), self.cols-1)
+
+        x1, y1, x2, y2 = self.getCellCoords(0, self.currentcol)
+        screen_x1 = self.canvasx(0)
+        screen_x2 = screen_x1 + self.winfo_width()
+        if x2 > screen_x2:
+            screen_pos = screen_x1 + (x2 - screen_x2) + 5
+        elif x1 < screen_x1:
+            screen_pos = float(x1)
+        else:
+            return
+        canvas_pos = float(screen_pos)/(self.tablewidth+self.x_start)
+        self.xview('moveto', canvas_pos)
+        self.tablecolheader.xview("moveto", canvas_pos)
+
     def handle_arrow_keys(self, event):
         """Handle arrow keys press"""
 
-        row = self.get_row_clicked(event)
-        col = self.get_col_clicked(event)
-        x,y = self.getCanvasPos(self.currentrow, 0)
-        if x == None:
+        if self.rows==0:
             return
 
         if event.keysym == 'Up':
-            if self.currentrow == 0:
-                return
-            else:
-                #self.yview('moveto', y)
-                #self.tablerowheader.yview('moveto', y)
-                self.currentrow  = self.currentrow -1
+            self.scroll_table_by_y(-1)
         elif event.keysym == 'Down':
-            if self.currentrow >= self.rows-1:
-                return
-            else:
-                #self.yview('moveto', y)
-                #self.tablerowheader.yview('moveto', y)
-                self.currentrow  = self.currentrow +1
-        elif event.keysym == 'Right' or event.keysym == 'Tab':
-            if self.currentcol >= self.cols-1:
-                if self.currentrow < self.rows-1:
-                    self.currentcol = 0
-                    self.currentrow  = self.currentrow +1
-                else:
-                    return
-            else:
-                self.currentcol  = self.currentcol +1
+            self.scroll_table_by_y(1)
+        elif event.keysym == 'Prior':
+            self.scroll_table_by_y(-10)
+        elif event.keysym == 'Next':
+            self.scroll_table_by_y(10)
+        elif event.keysym == 'Home':
+            self.scroll_table_by_y(-len(self.rowrange))
+        elif event.keysym == 'End':
+            self.scroll_table_by_y(len(self.rowrange))            
+        elif event.keysym == 'Right':
+            self.scroll_table_by_x(1)
         elif event.keysym == 'Left':
-            self.currentcol  = self.currentcol -1
+            self.scroll_table_by_x(-1)
+
         self.draw_selected_rect(self.currentrow, self.currentcol)
-        coltype = self.model.getColumnType(self.currentcol)
-        if coltype == 'text' or coltype == 'number':
-            self.delete('entry')
-            self.draw_cellentry(self.currentrow, self.currentcol)
-        return
+
+    def mouse_wheel(self, delta):
+        """Handle mouse wheel scroll"""
+        self.scroll_table_by_y(delta)
+        self.draw_selected_rect(self.currentrow, self.currentcol)
 
     def handle_double_click(self, event):
         """Do double click stuff. Selected row/cols will already have
