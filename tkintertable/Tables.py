@@ -22,7 +22,6 @@
 
 from Tkinter import *
 from TableModels import TableModel
-from TableFormula import Formula
 import tkFileDialog, tkMessageBox, tkSimpleDialog
 import tkFont
 import math
@@ -56,8 +55,6 @@ class TableCanvas(Canvas):
         self.multiplerowlist=[]
         self.multiplecollist=[]
         self.col_positions=[]       #record current column grid positions
-        self.mode = 'normal'
-        self.editable = False
         self.filtered = False
 
         #set any options passed in kwargs to overwrite defaults/prefs
@@ -110,8 +107,6 @@ class TableCanvas(Canvas):
     def do_bindings(self):
         """Bind keys and mouse clicks, this can be overriden"""
         self.bind("<Button-1>",self.handle_left_click)
-        self.bind("<Double-Button-1>",self.handle_double_click)
-        self.bind("<Control-Button-1>", self.handle_left_ctrl_click)
         self.bind("<Shift-Button-1>", self.handle_left_shift_click)
 
         self.bind("<ButtonRelease-1>", self.handle_left_release)
@@ -629,9 +624,6 @@ class TableCanvas(Canvas):
         self.delete('colrect')
         self.delete('multicellrect')
 
-        #self.delete('formulabox')
-        return
-
     def gotoprevRow(self):
         """Programmatically set previous row - eg. for button events"""
         self.clearSelected()
@@ -644,10 +636,6 @@ class TableCanvas(Canvas):
         self.multiplerowlist.append(self.currentrow)
         self.draw_selected_rect(self.currentrow, self.currentcol)
         self.drawSelectedRow()
-        coltype = self.model.getColumnType(self.currentcol)
-        if coltype == 'text' or coltype == 'number':
-            self.draw_cellentry(self.currentrow, self.currentcol)
-        return
 
     def gotonextRow(self):
         """Programmatically set next row - eg. for button events"""
@@ -661,10 +649,6 @@ class TableCanvas(Canvas):
         self.multiplerowlist.append(self.currentrow)
         self.draw_selected_rect(self.currentrow, self.currentcol)
         self.drawSelectedRow()
-        coltype = self.model.getColumnType(self.currentcol)
-        if coltype == 'text' or coltype == 'number':
-            self.draw_cellentry(self.currentrow, self.currentcol)
-        return
 
     def handle_left_click(self, event):
         """Respond to a single press"""
@@ -673,11 +657,6 @@ class TableCanvas(Canvas):
         self.allrows = False
         rowclicked = self.get_row_clicked(event)
         colclicked = self.get_col_clicked(event)
-        if self.mode == 'formula':
-            self.handleFormulaClick(rowclicked, colclicked)
-            return
-        if hasattr(self, 'cellentry'):
-            self.cellentry.destroy()
         if self.check_PageView(rowclicked) == 1:
             return
 
@@ -694,40 +673,17 @@ class TableCanvas(Canvas):
             self.draw_selected_rect(self.currentrow, self.currentcol)
             self.drawSelectedRow()
             self.tablerowheader.drawSelectedRows(rowclicked)
-            coltype = self.model.getColumnType(colclicked)
-            if coltype == 'text' or coltype == 'number':                
-                self.draw_cellentry(rowclicked, colclicked)
-        return
 
     def handle_left_release(self,event):
         self.endrow = self.get_row_clicked(event)
-        return
-
-    def handle_left_ctrl_click(self, event):
-        """Handle ctrl clicks for multiple row selections"""
-        rowclicked = self.get_row_clicked(event)
-        colclicked = self.get_col_clicked(event)
-        if 0 <= rowclicked < self.rows and 0 <= colclicked < self.cols:
-            if rowclicked not in self.multiplerowlist:
-                self.multiplerowlist.append(rowclicked)
-            else:
-                self.multiplerowlist.remove(rowclicked)
-            self.drawMultipleRows(self.multiplerowlist)
-            if colclicked not in self.multiplecollist:
-                self.multiplecollist.append(colclicked)
-            self.drawMultipleCells()
-        return
 
     def handle_left_shift_click(self, event):
         """Handle shift click, for selecting multiple rows"""
         #Has same effect as mouse drag, so just use same method
         self.handle_mouse_drag(event)
-        return
 
     def handle_mouse_drag(self, event):
         """Handle mouse moved with button held down, multiple selections"""
-        if hasattr(self, 'cellentry'):
-            self.cellentry.destroy()
         rowover = self.get_row_clicked(event)
         colover = self.get_col_clicked(event)
         if colover == None or rowover == None:
@@ -829,20 +785,6 @@ class TableCanvas(Canvas):
         self.scroll_table_by_y(delta)
         self.draw_selected_rect(self.currentrow, self.currentcol)
 
-    def handle_double_click(self, event):
-        """Do double click stuff. Selected row/cols will already have
-           been set with single click binding"""
-        row = self.get_row_clicked(event)
-        col = self.get_col_clicked(event)
-        absrow = self.get_AbsoluteRow(row)
-        model=self.getModel()
-        cellvalue = model.getCellRecord(absrow, col)
-        if Formula.isFormula(cellvalue):
-            self.formula_Dialog(row, col, cellvalue)
-            #self.enterFormula(rowclicked, colclicked)
-        #self.draw_cellentry(self.currentrow, self.currentcol)
-        return
-
     def handle_motion(self, event):
         """Handle mouse motion on table"""
         self.delete('tooltip')
@@ -857,8 +799,6 @@ class TableCanvas(Canvas):
 
     def gotonextCell(self, event):
         """Move highlighted cell to next cell in row or a new col"""
-        if hasattr(self, 'cellentry'):
-            self.cellentry.destroy()
         self.currentcol=self.currentcol+1
         if self.currentcol >= self.cols-1:
             self.currentrow  = self.currentrow +1
@@ -874,67 +814,6 @@ class TableCanvas(Canvas):
         x,y = self.getCanvasPos(row, 0)     
         self.yview('moveto', y-0.01)
         self.tablecolheader.yview('moveto', y)        
-        return        
-    
-    def handleFormulaClick(self, row, col):
-        """Do a dialog for cell formula entry"""
-    
-        model = self.getModel()
-        cell = list(model.getRecColNames(row, col))
-        absrow = self.get_AbsoluteRow(row)
-        self.formulaText.insert(END, str(cell))
-        self.formulaText.focus_set()
-        self.draw_selected_rect(row, col, color='red')
-        return
-
-    def formula_Dialog(self, row, col, currformula=None):
-        """Formula dialog"""
-        self.mode = 'formula'
-        absrow = self.get_AbsoluteRow(row)
-        x1,y1,x2,y2 = self.getCellCoords(row,col)
-        w=300
-        h=h=self.rowheight * 3
-        def close():
-            if hasattr(self,'formulaWin'):
-                self.delete('formulabox')
-            self.mode = 'normal'
-        def calculate():
-            #get text area contents and do formula
-            f = self.formulaText.get(1.0, END)
-            f = f.strip('\n')
-            self.model.setFormulaAt(f,absrow,col)
-            value = self.model.doFormula(f)
-            color = self.model.getColorAt(absrow,col,'fg')
-            self.draw_Text(row, col, value, color)
-            close()
-            self.mode = 'normal'
-            return
-        def clear():
-            self.formulaText.delete(1.0, END)
-
-        self.formulaFrame = Frame(width=w,height=h,bd=3,relief=RIDGE)
-        self.formulaText = Text(self.formulaFrame, width=30, height=8, bg='white',relief=GROOVE)
-        self.formulaText.pack(side=LEFT,padx=2,pady=2)
-        if currformula != None:
-            self.formulaText.insert(END, Formula.getFormula(currformula))
-        cancelbutton=Button(self.formulaFrame, text='Cancel',
-                            relief=GROOVE,bg='#99ccff',command=close)
-        cancelbutton.pack(fill=BOTH,padx=2,pady=2)
-        donebutton=Button(self.formulaFrame, text='Done',
-                          relief=GROOVE,bg='#99ccff',command=calculate)
-        donebutton.pack(fill=BOTH,padx=2,pady=2)
-        '''clrbutton=Button(self.formulaFrame, text='Clear',
-                         relief=GROOVE,bg='#99ccff',command=clear)
-        clrbutton.pack(fill=BOTH,padx=2,pady=2) '''
-        #add to canvas
-        self.formulaWin = self.create_window(x1+self.inset,y1+self.inset,
-                                width=w,height=h,
-                                window=self.formulaFrame,anchor='nw',
-                                tag='formulabox')
-        self.formulaText.focus_set()
-        return
-
-    # --- spreadsheet type functions ---
 
     def getSelectionValues(self):
         """Get values for current multiple cell selection"""
@@ -1066,70 +945,6 @@ class TableCanvas(Canvas):
                                   width=w,
                                   tag=(recttag,'cellbg'+str(row)+str(col)))
         self.lower(recttag)
-        return
-
-    def draw_cellentry(self, row, col, text=None):
-        """When the user single/double clicks on a text/number cell, bring up entry window"""
-
-        if self.editable == False:
-            return
-        absrow = self.get_AbsoluteRow(row)
-        h=self.rowheight
-        model=self.getModel()
-        cellvalue = self.model.getCellRecord(absrow, col)
-        if Formula.isFormula(cellvalue):
-            return
-        else:
-            text = self.model.getValueAt(absrow, col)
-        x1,y1,x2,y2 = self.getCellCoords(row,col)
-        w=x2-x1
-        #Draw an entry window
-        txtvar = StringVar()
-        txtvar.set(text)
-        def callback(e):
-            value = txtvar.get()
-            if value == '=':
-
-                #do a dialog that gets the formula into a text area
-                #then they can click on the cells they want
-                #when done the user presses ok and its entered into the cell
-                self.cellentry.destroy()
-                #its all done here..
-                self.formula_Dialog(row, col)
-                return
-
-            coltype = self.model.getColumnType(col)
-            if coltype == 'number':
-                sta = self.check_data_entry(e)
-                if sta == 1:
-                    model.setValueAt(value,absrow,col)
-            elif coltype == 'text':
-                model.setValueAt(value,absrow,col)
-
-            color = self.model.getColorAt(absrow,col,'fg')
-            self.draw_Text(row, col, value, color)
-            if e.keysym=='Return':
-                self.delete('entry')
-                #self.draw_rect(row, col)
-                #self.gotonextCell(e)
-            return
-        
-        self.cellentry=Entry(self.parentframe,width=20,
-                        textvariable=txtvar,
-                        bg=self.entrybackgr,
-                        relief=FLAT,
-                        takefocus=1,
-                        font=self.thefont)
-        self.cellentry.icursor(END)
-        self.cellentry.bind('<Return>', callback)
-        self.cellentry.bind('<KeyRelease>', callback)
-        self.cellentry.focus_set()
-        self.entrywin=self.create_window(x1+self.inset,y1+self.inset,
-                                width=w-self.inset*2,height=h-self.inset*2,
-                                window=self.cellentry,anchor='nw',
-                                tag='entry')
-
-        return
 
     def check_data_entry(self,event=None):
         """do validation checks on data entry in a widget"""
@@ -1147,10 +962,6 @@ class TableCanvas(Canvas):
         elif value == '':
             return 1
         return 1
-
-    def enterFormula(self, row, col):
-
-        return
 
     def draw_Text(self, row, col, celltxt, fgcolor=None, align=None):
         """Draw the text inside a cell area"""
@@ -1376,27 +1187,6 @@ class TableCanvas(Canvas):
         except:
             pass
         return
-
-    def show_progressbar(self,message=None):
-        """Show progress bar window for loading of data"""
-        progress_win=Toplevel() # Open a new window
-        progress_win.title("Please Wait")
-        #progress_win.geometry('+%d+%d' %(self.parentframe.rootx+200,self.parentframe.rooty+200))
-        #force on top
-        progress_win.grab_set()
-        progress_win.transient(self.parentframe)
-        if message==None:
-            message='Working'
-        lbl = Label(progress_win,text=message,font='Arial 16')
-
-        lbl.grid(row=0,column=0,columnspan=2,sticky='news',padx=6,pady=4)
-        progrlbl = Label(progress_win,text='Progress:')
-        progrlbl.grid(row=1,column=0,sticky='news',padx=2,pady=4)
-        import ProgressBar
-        self.bar = ProgressBar.ProgressBar(progress_win)
-        self.bar.frame.grid(row=1,column=1,columnspan=2,padx=2,pady=4)
-
-        return progress_win
 
     @classmethod
     def checkOSType(cls):
@@ -1676,8 +1466,6 @@ class RowHeader(Canvas):
 
     def handle_mouse_drag(self, event):
         """Handle mouse moved with button held down, multiple selections"""
-        if hasattr(self, 'cellentry'):
-            self.cellentry.destroy()
         rowover = self.table.get_row_clicked(event)
         colover = self.table.get_col_clicked(event)
         if rowover == None or self.table.check_PageView(rowover) == 1:

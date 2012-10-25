@@ -20,7 +20,6 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
-from TableFormula import Formula
 from types import *
 import copy
 
@@ -256,9 +255,6 @@ class TableModel(object):
                 temp = copy.deepcopy(self.colors[key][currname])
                 self.colors[key][newname] = temp
                 del self.colors[key][currname]
-        #would also need to resolve all refs to this rec in formulas here!
-
-        return
 
     def getRecordAttributeAtColumn(self, rowIndex=None, columnIndex=None,
                                         recName=None, columnName=None):
@@ -277,10 +273,6 @@ class TableModel(object):
              cell=''
          # Set the value based on the data record field
          coltype = self.columntypes[columnName]
-         if Formula.isFormula(cell) == True:
-             value = self.doFormula(cell)
-             return value
-           
          if not type(cell) is DictType:             
              if coltype == 'text' or coltype == 'Text':
                  value = cell
@@ -660,18 +652,7 @@ class TableModel(object):
             except:
                 pass
         else:
-            self.data[name][colname] = value       
-        return
-
-    def setFormulaAt(self, f, rowIndex, columnIndex):
-        """Set a formula at cell given"""
-        name = self.getRecName(rowIndex)
-        colname = self.getColumnName(columnIndex)
-        coltype = self.columntypes[colname]
-        rec = {}
-        rec['formula'] = f
-        self.data[name][colname] = rec
-        return
+            self.data[name][colname] = value
 
     def getColorAt(self, rowIndex, columnIndex, key='bg'):
         """Return color of that record field for the table"""
@@ -719,36 +700,6 @@ class TableModel(object):
 
         newrecname, newcolname = self.getRecColNames(nrow, ncol)
         return newrecname, newcolname
-
-    def appendtoFormula(self, formula, rowIndex, colIndex):
-        """Add the input cell to the formula"""
-        cellRec = getRecColNames(rowIndex, colIndex)
-        formula.append(cellRec)
-        return
-
-    def doFormula(self, cellformula):
-        """Evaluate the formula for a cell and return the result"""
-        value = Formula.doFormula(cellformula, self.data)
-        return value
-
-    def copyFormula(self, cellval, row, col, offset=1, dim='y'):
-        """Copy a formula down or across, using the provided offset"""
-        import re
-        frmla = Formula.getFormula(cellval)
-
-        newcells=[]
-        cells, ops = Formula.readExpression(frmla)
-
-        for c in cells:
-            if type(c) is not ListType:
-                nc = c
-            else:
-                recname = c[0]
-                colname = c[1]
-                nc = list(self.getRecAtRow(recname, colname, offset, dim=dim))
-            newcells.append(nc)
-        newformula = Formula.doExpression(newcells, ops, getvalues=False)
-        return newformula
 
     def merge(self, model, key='name', fields=None):
         """Merge another table model with this one based on a key field, 
