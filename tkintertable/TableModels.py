@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import math
+
 class ErrColumnList(Exception):
     def __init__(self, value):
         self.value = value
@@ -35,12 +37,7 @@ class Column:
 
 class ColumnList(object):
     def __init__(self):
-        self.set_default()
-
-    def set_default(self):
-        self.columns         = []
-        self.sort_index      = None
-        self.sort_is_reverse = True
+        self.clear()
 
     def get(self, col):
         if self.count() > col:
@@ -55,7 +52,9 @@ class ColumnList(object):
         self.columns.append(Column(caption, width, typedata))
 
     def clear(self):
-        self.set_default()
+        self.columns         = []
+        self.sort_index      = None
+        self.sort_is_reverse = True
 
     def get_sort_index(self):
         return self.sort_index
@@ -72,11 +71,7 @@ class ColumnList(object):
 
 class RowList(object):
     def __init__(self):
-        self.set_default()
-
-    def set_default(self):
-        self.rows = []
-        self.cnt_col = 0
+        self.clear()
 
     def get(self, col, row):
         if self.count_col() > col and self.count_row() > row:
@@ -101,7 +96,8 @@ class RowList(object):
         self.rows.append(row)
 
     def clear(self):
-        self.set_default()
+        self.rows = []
+        self.cnt_col = 0
 
     def sort(self, col, is_reverse, typedata):
         def key(row):
@@ -112,21 +108,63 @@ class RowList(object):
         self.rows = sorted(self.rows, key = key, reverse = is_reverse)
 
 class TableModel(object):
-    def __init__(self):
-        self.columns = ColumnList()
-        self.data    = RowList()
+    def __init__(self, rowsperpage = 100, paginal = True):
+        if rowsperpage <= 0:
+            rowsperpage = 100
+        self.rowsperpage = rowsperpage
+        self.paginal     = paginal
+        self.currentpage = 0
+        self.rowrange    = []
+        self.columns     = ColumnList()
+        self.data        = RowList()
+        self.recalc_page(0)
 
     def add_column(self, caption, width = None, typedata = None):
         self.columns.add(caption, width, typedata)
         self.data.create(self.columns.count())
+        self.recalc_page(self.currentpage)
 
     def add_row(self, row):
         self.data.add(row)
+        self.recalc_page(self.currentpage)
 
     def resort(self, col):
         is_reverse = not self.get_sort_is_reverse()
         self.columns.set_sort(col, is_reverse)
         self.data.sort(col, is_reverse, self.columns.get(col).typedata)
+
+    def recalc_page(self, col):
+        self.currentpage = col
+        if self.paginal:
+            lower = self.currentpage*self.rowsperpage
+            upper = min(lower+self.rowsperpage, self.get_row_count())
+            self.rowrange = range(lower, upper)
+        else:
+            self.rowrange = range(0, self.get_row_count())
+
+    def goto_first_page(self):
+        if self.currentpage != 0:
+            self.recalc_page(0)
+            return True
+        return False
+
+    def goto_last_page(self):
+        if self.currentpage != self.get_pages_count()-1:
+            self.recalc_page(self.get_pages_count()-1)
+            return True
+        return False
+
+    def goto_prev_page(self):
+        if self.currentpage > 0:
+            self.recalc_page(self.currentpage - 1)
+            return True
+        return False
+
+    def goto_next_page(self):
+        if self.currentpage < self.get_pages_count()-1:
+            self.recalc_page(self.currentpage + 1)
+            return True
+        return False
 
     def get_column_count(self):
         return self.columns.count()
@@ -134,11 +172,29 @@ class TableModel(object):
     def get_row_count(self):
         return self.data.count_row()
 
+    def get_page_row_count(self):
+        return len(self.rowrange)
+
+    def get_pages_count(self):
+        if self.paginal:
+            return math.trunc(math.ceil(float(self.data.count_row())/self.rowsperpage))
+        else:
+            return 1
+
+    def get_current_page(self):
+        return self.currentpage
+
+    def page_row_to_absolute_row(self, row):
+        return row+self.currentpage*self.rowsperpage
+
     def get_column(self, col):
         return self.columns.get(col)
 
     def get_value(self, col, row):
         return self.data.get(col, row)
+
+    def get_page_rows(self):
+        return self.rowrange
 
     def get_sort_index(self):
         return self.columns.get_sort_index()
@@ -146,6 +202,14 @@ class TableModel(object):
     def get_sort_is_reverse(self):
         return self.columns.get_sort_is_reverse()
 
+    def is_paginal(self):
+        return self.paginal
+
+    def set_paginal(self, is_paginal):
+        self.paginal = is_paginal
+        self.recalc_page(0)
+
     def clear(self):
         self.columns.clear()
         self.data.clear()
+        self.recalc_page(0)

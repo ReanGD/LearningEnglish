@@ -34,23 +34,23 @@ class TableCanvas(Canvas):
                          width=width, height=height,
                          relief=GROOVE,
                          scrollregion=(0,0,300,200))
+
+        self.col_positions=[]       #record current column grid positions
+        self.currentrow = 0
+        self.currentcol = 0
+        self.startrow = self.endrow = None
+        self.startcol = self.endcol = None
+        self.multiplerowlist=[]
+        self.multiplecollist=[]
+        self.navFrame = None
+
+
+        
         self.parentframe = parent
         self.width=width
         self.height=height
 
         self.set_defaults()
-        self.currentpage = None
-        self.navFrame = None
-        self.currentrow = 0
-        self.currentcol = 0
-        #for multiple selections
-        self.startrow = self.endrow = None
-        self.startcol = self.endcol = None
-        self.allrows = False   #for selected all rows without setting multiplerowlist
-        self.multiplerowlist=[]
-        self.multiplecollist=[]
-        self.col_positions=[]       #record current column grid positions
-
         #set any options passed in kwargs to overwrite defaults/prefs
         for key in kwargs:
             self.__dict__[key] = kwargs[key]
@@ -62,74 +62,54 @@ class TableCanvas(Canvas):
         self.rows=self.model.get_row_count()
         self.cols=self.model.get_column_count()
         self.tablewidth=(self.cellwidth)*self.cols
-        self.tablecolheader = ColumnHeader(self.parentframe, self, self.header_cfg)
-        self.tablerowheader = RowHeader(self.parentframe, self)
+        self.tablecolheader = ColumnHeader(self.parentframe, self, self.col_header_cfg)
+        self.tablerowheader = RowHeader(self.parentframe, self, self.row_header_cfg)
         self.do_bindings()
 
     def set_defaults(self):
         self.cellwidth=120
         self.maxcellwidth=400
-        self.rowheight=20
-        self.horizlines=1
-        self.vertlines=1
-        self.alternaterows=0
         self.autoresizecols = 0
-        self.paging = 0
-        self.rowsperpage = 100
         self.inset=2
         self.x_start=0
         self.y_start=1
-        self.linewidth=1.0
-        self.fontsize = 11
-        self.thefont = ('Arial', self.fontsize)
         self.cellbackgr = '#F7F7FA'
         self.entrybackgr = 'white'
-        self.grid_color = '#ABB1AD'
-        self.selectedcolor = 'yellow'
         self.rowselectedcolor = '#CCCCFF'
         self.multipleselectioncolor = '#ECD672'
-        self.header_cfg = {
+
+        self.rowheight  = 20
+        self.selectedcolor = 'yellow'
+        self.grid_color = '#ABB1AD'
+        self.text_color = 'black'
+        self.tooltip_font_opt = ("Arial", 12, "bold")
+        self.text_font_opt    = ("Arial", 11, "normal")
+        self.col_header_cfg = {
              "height"   : 20
             ,"font"     : ("Arial", 11, "normal")
             ,"bg_clr"   : "gray25"
             ,"font_clr" : "white"
             }
-
-    def do_bindings(self):
-        """Bind keys and mouse clicks, this can be overriden"""
-        self.bind("<Button-1>",self.handle_left_click)
-        self.bind("<Shift-Button-1>", self.handle_left_shift_click)
-        self.bind("<ButtonRelease-1>", self.handle_left_release)
-        self.bind('<B1-Motion>', self.handle_mouse_drag)
-        self.bind('<Motion>', self.handle_motion)
-
-        self.parentframe.master.bind_all("<Up>",     self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<Down>",   self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<Right>",  self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<Left>",   self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<Prior>",  self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<Next>",   self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<Home>",   self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<End>",    self.handle_arrow_keys)
-
-        self.parentframe.master.bind_all("<MouseWheel>",
-            lambda event=None: self.mouse_wheel(-math.trunc(math.copysign(1, event.delta))))
-        self.parentframe.master.bind_all('<Button-4>',
-            lambda event=None: self.mouse_wheel(-1))
-        self.parentframe.master.bind_all('<Button-5>',
-            lambda event=None: self.mouse_wheel(1))
+        self.row_header_cfg = {
+             "width"    : 40
+            ,"font"     : ("Arial", 11, "normal")
+            ,"bg_clr"   : "gray25"
+            ,"font_clr" : "white"
+            }
 
     def getModel(self):
         """Get the current table model"""
         return self.model
 
-    def setModel(self,model):
-        self.model = model
-
-    def createTableFrame(self, callback=None):
+    def createTableFrame(self):
         """Adds column header and scrollbars and combines them with
            the current table adding all to the master frame provided in constructor.
            Table is then redrawn."""
+
+        fnt = self.tooltip_font_opt
+        self.tooltip_font = tkFont.Font(family = fnt[0], size = fnt[1], weight = fnt[2])
+        fnt = self.text_font_opt
+        self.text_font = tkFont.Font(family = fnt[0], size = fnt[1], weight = fnt[2])
 
         #Add the table and header to the frame
         self.Yscrollbar = AutoScrollbar(self.parentframe,orient=VERTICAL,command=self.set_yviews)
@@ -148,373 +128,328 @@ class TableCanvas(Canvas):
         self.grid(row=1,column=1,rowspan=1,sticky='news',pady=0,ipady=0)
         # if self.model.get_row_count()<500:
         #     self.adjust_colWidths()
-        self.redrawTable(callback=callback)
+        self.redrawTable()
         self.parentframe.bind("<Configure>", self.resizeTable)
         self.tablecolheader.xview("moveto", 0)
         self.xview("moveto", 0)
 
-    def redrawTable(self, event=None, callback=None):
-        """Draw the table from scratch based on it's model data"""
-        import time
-        self.rows=self.model.get_row_count()
-        self.cols=self.model.get_column_count()
-        self.tablewidth=(self.cellwidth)*self.cols
-        self.configure(bg=self.cellbackgr)
-        #determine col positions for first time
-        self.set_colPositions()
-
-        #check if large no. of records and switch to paging view
-        if self.paging == 0 and self.rows >= 500:
-            self.paging = 1
-        #if using paging, we only want to display the current page..
-        if self.paging == 1:
-            self.numpages = int(math.ceil(float(self.rows)/self.rowsperpage))
-          
-            if self.currentpage == None:
-                self.currentpage = 0
-            self.drawNavFrame()
-        else:
-            try:
-                self.navFrame.destroy()
-                self.navFrame.forget()
-            except:
-                pass
-        #determine current range of rows to draw if paging
-        if self.paging == 1 and self.rows>self.rowsperpage:
-            lower=self.currentpage*self.rowsperpage
-            upper=lower+self.rowsperpage
-            if upper>=self.rows:
-                upper=self.rows
-            self.rowrange=range(lower,upper)
-            self.configure(scrollregion=(0,0, self.tablewidth+self.x_start, self.rowheight*len(self.rowrange)+10))
-        else:
-            self.rowrange = range(0,self.rows)
-            self.configure(scrollregion=(0,0, self.tablewidth+self.x_start, self.rowheight*self.rows+10))
-            
-        self.draw_grid()
-        self.update_idletasks()
-        self.tablecolheader.redraw()
-        self.tablerowheader.redraw(paging=self.paging)
-        align=None
-        self.delete('fillrect')
-     
-        if self.cols == 0 or self.rows == 0:
-            self.delete('entry')
-            self.delete('rowrect')
-            self.delete('currentrect')
-            return
-
-        #now draw model data in cells
-        rowpos=0
-        if self.model!=None:
-            for row in self.rowrange:
-                if callback != None:
-                    callback()                   
-                for col in range(self.cols):
-                    align=None
-                    bgcolor = None
-                    fgcolor = None
-                    text = self.model.get_value(col, row)
-                    self.draw_Text(rowpos, col, text, fgcolor, align)
-                    if bgcolor != None:
-                        self.draw_rect(rowpos,col, color=bgcolor)
-                rowpos+=1
-        self.setSelectedRow(0)
-        self.drawSelectedRow()
-        self.draw_selected_rect(self.currentrow, self.currentcol)
-        if len(self.multiplerowlist)>1:
-            self.drawMultipleRows(self.multiplerowlist)
-        
-    def resizeTable(self, event):
-        """Respond to a resize event - redraws table"""
-        if self.autoresizecols == 1 and event != None:
-            self.cellwidth = (event.width - self.x_start - 24) / self.cols
-            self.redrawTable()
-
-    def set_colPositions(self):
-        """Determine current column grid positions"""
-        self.col_positions=[]
-        x_pos=self.x_start
-        self.col_positions.append(x_pos)
-        for col in range(self.cols):
-            x_pos=x_pos+self.model.get_column(col).width
-            self.col_positions.append(x_pos)
-        self.tablewidth = self.col_positions[len(self.col_positions)-1]
-
-    def sortTable(self, sortcol):
-        self.model.resort(sortcol)
-        self.redrawTable()
+    ###############################################
+    # Common
+    ###############################################
 
     def set_xviews(self,*args):
         """Set the xview of table and col header"""
         apply(self.xview,args)
         apply(self.tablecolheader.xview,args)
-        return
 
     def set_yviews(self,*args):
         """Set the xview of table and row header"""
         apply(self.yview,args)
         apply(self.tablerowheader.yview,args)
-        return
 
-    def drawNavFrame(self):
-        """Draw the frame for selecting pages when paging is on"""
-        import Table_images
-        self.navFrame = Frame(self.parentframe)
-        self.navFrame.grid(row=4,column=0,columnspan=2,sticky='news',padx=1,pady=1,ipady=1)
-        pagingbuttons = { 'start' : self.first_Page, 'prev' : self.prev_Page,
-                          'next' : self.next_Page, 'end' : self.last_Page}
-        images = { 'start' : Table_images.start(), 'prev' : Table_images.prev(),
-                   'next' : Table_images.next(), 'end' : Table_images.end()}
-        skeys=['start', 'prev', 'next', 'end']
-        for i in skeys:
-            b = Button(self.navFrame, text=i, command=pagingbuttons[i],
-                        relief=GROOVE,
-                        image=images[i])
-            b.image = images[i]
-            b.pack(side=LEFT, ipadx=1, ipady=1)
-        Label(self.navFrame,text='Page '+str(self.currentpage+1)+' of '+ str(self.numpages),fg='white',
-                  bg='#3366CC',relief=SUNKEN).pack(side=LEFT,ipadx=2,ipady=2,padx=4)
-        #Label(self.navFrame,text='Goto Record:').pack(side=LEFT,padx=3)
-        #self.gotorecordvar = StringVar()
-        #Entry(self.navFrame,textvariable=self.gotorecordvar,
-        #          width=8,bg='white').pack(side=LEFT,ipady=3,padx=2)
-        Label(self.navFrame,text=str(self.rows)+' records').pack(side=LEFT,padx=3)
-        Button(self.navFrame,text='Normal View',command=self.paging_Off,
-                   bg='#99CCCC',relief=GROOVE).pack(side=LEFT,padx=3)
-        return
+    def set_colPositions(self):
+        """Determine current column grid positions"""
+        self.col_positions=[]
+        x_pos = self.x_start
+        self.col_positions.append(x_pos)
+        for col in range(0, self.cols):
+            x_pos += self.model.get_column(col).width
+            self.col_positions.append(x_pos)
+        self.tablewidth = self.col_positions[len(self.col_positions)-1]
 
-    def paging_Off(self):
-        self.rows=self.model.get_row_count()
-        if self.rows >= 1000:
-            tkMessageBox.showwarning("Warning",
-                                     'This table has over 1000 rows.'
-                                     'You should stay in page view.'
-                                     'You can increase the rows per page in settings.',
-                                     parent=self.parentframe)
-        else:
-            self.paging = 0
-            self.redrawTable()
-        return
+    def getCellCoords(self, row, col):
+        """Get x-y coordinates to drawing a cell in a given row/col"""        
+        w = self.model.get_column(col).width
+        h = self.rowheight
 
-    def first_Page(self):
-        """Go to next page"""
-        self.currentpage = 0
-        self.redrawTable()
-        return
+        x1 = self.col_positions[col]
+        y1 = self.y_start + h*row
+        x2 = x1 + w
+        y2 = y1 + h
+        return x1,y1,x2,y2
 
-    def last_Page(self):
-        """Go to next page"""
-        self.currentpage = self.numpages-1
-        self.redrawTable()
-        return
+    def setSelectedRow(self, row):
+        """Set currently selected row and reset multiple row list"""
+        self.currentrow = row
+        self.multiplerowlist = [row]
 
-    def prev_Page(self):
-        """Go to next page"""
-        if self.currentpage > 0:
-            self.currentpage -= 1
-            self.redrawTable()
-        return
+    def setSelectedCol(self, col):
+        """Set currently selected column"""
+        self.currentcol = col
+        self.multiplecollist = [col]
 
-    def next_Page(self):
-        """Go to next page"""
-        if self.currentpage < self.numpages-1:
-            self.currentpage += 1
-            self.redrawTable()
-        return
+    def is_valid_page_row(self, row):
+        if row == None:
+            return False
+        return 0 <= row < self.model.get_page_row_count()
 
-    def get_AbsoluteRow(self, row):
-        """This function always returns the corrected absolute row number,
-           whether if paging is on or not"""
-        if self.paging == 0:
-            return row
-        absrow = row+self.currentpage*self.rowsperpage
-        return absrow
-
-    def check_PageView(self, row):
-        """Check if row clickable for page view"""
-        if self.paging == 1:
-            absrow = self.get_AbsoluteRow(row)
-            if absrow >= self.rows or row > self.rowsperpage:
-                return 1
-        return 0
-      
-    def resize_Column(self, col, width):
-        """Resize a column by dragging"""
-        #recalculate all col positions..
-        self.model.get_column(col).width = width
-
-        self.set_colPositions()
-        self.redrawTable()
-        self.drawSelectedCol(self.currentcol)
+    def is_valid_col(self, col):
+        if col == None:
+            return False
+        return 0 <= col < self.model.get_column_count()
 
     def get_row_clicked(self, event):
         """get row where event on canvas occurs"""
-        h=self.rowheight
-        #get coord on canvas, not window, need this if scrolling
         y = int(self.canvasy(event.y))
-        y_start=self.y_start
-        rowc = (int(y)-y_start)/h
-        return rowc
+        y_start = self.y_start
+        return (y-y_start)/self.rowheight
 
     def get_col_clicked(self,event):
         """get col where event on canvas occurs"""
-        w=self.cellwidth
         x = int(self.canvasx(event.x))
-        x_start=self.x_start
         for ind, colpos in enumerate(self.col_positions):
             try:
                 nextpos=self.col_positions[ind+1]
             except:
                 nextpos=self.tablewidth
-            if x > colpos and x <= nextpos:
+            if colpos < x <= nextpos:
                 return ind
-            else:
-                pass
+        return None
 
-    def setSelectedRow(self, row):
-        """Set currently selected row and reset multiple row list"""
-        self.currentrow = row
-        self.multiplerowlist = []
-        self.multiplerowlist.append(row)
+    ###############################################
+    # Draw
+    ###############################################
 
-    def setSelectedCol(self, col):
-        """Set currently selected column"""
-        self.currentcol = col
-        self.multiplecollist = []
-        self.multiplecollist.append(col)
+    def draw_grid(self):
+        """Draw the table grid lines"""
+        self.delete('gridline','text')
+        rows    = self.model.get_page_row_count()
+        cols    = self.cols
+        h       = self.rowheight
+        x_start = self.x_start
+        x_stop  = self.tablewidth
+        y_start = self.y_start
+        y_stop  = y_start+rows*h
 
-    def getSelectedRow(self):
-        """Get currently selected row"""
-        return self.currentrow
+        for col in range(0, cols+1):
+            x=self.col_positions[col]
+            self.create_line(x, y_start, x, y_stop, tag='gridline',
+                                 fill=self.grid_color, width=1)
 
-    def getSelectedColumn(self):
-        """Get currently selected column"""
-        return self.currentcol
+        for row in range(0, rows+1):
+            y=y_start+row*h
+            self.create_line(x_start, y, x_stop, y, tag='gridline',
+                                fill=self.grid_color, width=1)
 
-    def getCellCoords(self, row, col):
-        """Get x-y coordinates to drawing a cell in a given row/col"""        
-        w=self.model.get_column(col).width
-        h=self.rowheight
-        x_start=self.x_start
-        y_start=self.y_start
-
-        #get nearest rect co-ords for that row/col
-        #x1=x_start+w*col
-        x1=self.col_positions[col]
-        y1=y_start+h*row
-        x2=x1+w
-        y2=y1+h
-        return x1,y1,x2,y2
-
-    def getCanvasPos(self, row, col):
-        """Get the cell x-y coords as a fraction of canvas size"""
-        if self.rows==0:
-            return None, None
+    def draw_Text(self, row, col, celltxt):
+        """Draw the text inside a cell area"""
+        self.delete('celltext'+str(col)+'_'+str(row))
         x1,y1,x2,y2 = self.getCellCoords(row,col)
-        cx=float(x1)/self.tablewidth
-        cy=float(y1)/(self.rows*self.rowheight)
-        return cx, cy
+        h = self.rowheight
+        w = x2-x1
 
-    def isInsideTable(self,x,y):
-        """Returns true if x-y coord is inside table bounds"""
-        if self.x_start < x < self.tablewidth and self.y_start < y < self.rows*self.rowheight:
-            return 1
-        else:
-            return 0
-        return answer
+        if w <= 25:
+            return
 
-    def setRowHeight(self, h):
-        """Set the row height"""
-        self.rowheight = h
-        return
+        fontsize = self.text_font_opt[1]
+        scale    = fontsize*1.2
+        total    = len(celltxt)
+        
+        if len(celltxt) > w/scale:           
+            celltxt = celltxt[0:int(w/fontsize*1.2)-3]
+        if len(celltxt) < total:
+            celltxt += '..'
+
+        self.create_text(x1 + w/2, y1 + h/2,
+                         text   = celltxt,
+                         fill   = self.text_color,
+                         font   = self.text_font,
+                         anchor = 'center',
+                         tag    = ('text','celltext'+str(col)+'_'+str(row)))
+
+    def draw_tooltip(self, row, col):
+        """Draw a tooltip showing contents of cell"""
+        absrow = self.model.page_row_to_absolute_row(row)
+        text   = self.model.get_value(col,absrow)
+        if text == '':
+            return
+
+        x1,y1,x2,y2 = self.getCellCoords(row,col)
+        w=x2-x1
+        obj=self.create_text(x1+w/1.5, y2,
+                                text   = text,
+                                anchor = 'w',
+                                font   = self.tooltip_font,
+                                tag    = 'tooltip')
+
+        box = self.bbox(obj)
+        x1=box[0]-1
+        y1=box[1]-1
+        x2=box[2]+1
+        y2=box[3]+1
+
+        self.create_rectangle(x1+1,y1+1,x2+1,y2+1,tag='tooltip',fill='black')
+        self.create_rectangle(x1,y1,x2,y2,tag='tooltip',fill='lightyellow')
+        self.lift(obj)
+
+    def drawSelectedRow(self):
+        """Draw the highlight rect for the currently selected row"""
+        self.delete('rowrect')
+        self.delete('multiplesel')
+        row = self.currentrow
+        x1,y1,x2,y2 = self.getCellCoords(row,0)
+        x2 = self.tablewidth
+        self.create_rectangle(x1,y1,x2,y2,
+                              fill    = self.rowselectedcolor,
+                              outline = self.rowselectedcolor,
+                              tag     = 'rowrect')
+        self.lower('rowrect')
+
+    def drawMultipleRows(self, rowlist):
+        """Draw more than one row selection"""
+        self.delete('rowrect')
+        self.delete('multiplesel')
+        for row in rowlist:
+            x1,y1,x2,y2 = self.getCellCoords(row,0)
+            x2=self.tablewidth
+            self.create_rectangle(x1,y1,x2,y2,
+                                  fill    = self.multipleselectioncolor,
+                                  outline = self.rowselectedcolor,
+                                  tag     = ('multiplesel','rowrect'))
+        self.lower('multiplesel')
+
+    def drawSelectedRect(self):
+        """User has clicked to select a cell"""
+        self.delete('currentrect')
+        w=3
+        x1,y1,x2,y2 = self.getCellCoords(self.currentrow, self.currentcol)
+        self.create_rectangle(x1+w/2, y1+w/2, x2-w/2, y2-w/2,
+                              fill    = self.selectedcolor,
+                              outline = 'gray25',
+                              width   = w,
+                              stipple = 'gray50',
+                              tag     = 'currentrect')
+        self.lift('celltext'+str(self.currentcol)+'_'+str(self.currentrow))
+
+    def drawMultipleCells(self):
+        """Draw an outline box for multiple cell selection"""
+        self.delete('multicellrect')
+        rows = self.multiplerowlist
+        cols = self.multiplecollist
+        w=2
+        x1,y1,a,b = self.getCellCoords(rows[0],cols[0])
+        c,d,x2,y2 = self.getCellCoords(rows[len(rows)-1],cols[len(cols)-1])
+        rect = self.create_rectangle(x1+w/2,y1+w/2,x2,y2,
+                             outline='blue',width=w,activefill='red',activestipple='gray25',
+                             tag='multicellrect')
 
     def clearSelected(self):
-        self.delete('rect')
-        self.delete('entry')
         self.delete('tooltip')
-        self.delete('colrect')
+        self.delete('rowrect')
+        self.delete('multiplesel')
         self.delete('multicellrect')
+        self.delete('currentrect')
 
-    def gotoprevRow(self):
-        """Programmatically set previous row - eg. for button events"""
+    def redrawTable(self):
+        """Draw the table from scratch based on it's model data"""
+        self.rows = self.model.get_row_count()
+        self.cols = self.model.get_column_count()
+        self.configure(bg=self.cellbackgr) #todo
+        self.set_colPositions()
+
+        if self.model.get_pages_count() == 1:
+            try:
+                self.navFrame.destroy()
+                self.navFrame.forget()
+            except:
+                pass
+        else:
+            self.drawNavFrame()
+
+        self.configure(scrollregion=(0,0, self.tablewidth+self.x_start,
+                                          self.rowheight*self.model.get_page_row_count()+10
+                                          ))#todo
+        self.draw_grid()
+        self.update_idletasks()
+        self.tablecolheader.redraw()
+        self.tablerowheader.redraw()
+
+        #now draw model data in cells
+        for rowpos, row in enumerate(self.model.get_page_rows()):
+            for col in range(self.cols):
+                text = self.model.get_value(col, row)
+                self.draw_Text(rowpos, col, text)
+
+        self.startrow = 0
+        self.endrow   = 0
+        self.startcol = 0
+        self.endcol   = 0
+        self.setSelectedRow(0)
+        self.setSelectedCol(0)
         self.clearSelected()
-        current = self.getSelectedRow()
-        self.setSelectedRow(current-1)
-        self.startrow = current-1
-        self.endrow = current-1
-        #reset multiple selection list
-        self.multiplerowlist=[]
-        self.multiplerowlist.append(self.currentrow)
-        self.draw_selected_rect(self.currentrow, self.currentcol)
         self.drawSelectedRow()
+        self.drawSelectedRect()
+        self.tablerowheader.drawSelectedRows(0)
 
-    def gotonextRow(self):
-        """Programmatically set next row - eg. for button events"""
-        self.clearSelected()
-        current = self.getSelectedRow()
-        self.setSelectedRow(current+1)
-        self.startrow = current+1
-        self.endrow = current+1
-        #reset multiple selection list
-        self.multiplerowlist=[]
-        self.multiplerowlist.append(self.currentrow)
-        self.draw_selected_rect(self.currentrow, self.currentcol)
-        self.drawSelectedRow()
+    ###############################################
+    # Mouse and Keyboard
+    ###############################################
 
-    def handle_left_click(self, event):
-        """Respond to a single press"""
-        #which row and column is the click inside?
-        self.clearSelected()
-        self.allrows = False
+    def do_bindings(self):
+        """Bind keys and mouse clicks, this can be overriden"""
+        self.bind("<Button-1>",        self.handle_left_click)
+        self.bind("<Shift-Button-1>",  self.handle_left_shift_click)
+        self.bind("<ButtonRelease-1>", self.handle_left_release)
+        self.bind('<B1-Motion>',       self.handle_mouse_drag)
+        self.bind('<Motion>',          self.handle_motion)
+
+        self.parentframe.master.bind_all("<Up>",     self.handle_arrow_keys)
+        self.parentframe.master.bind_all("<Down>",   self.handle_arrow_keys)
+        self.parentframe.master.bind_all("<Right>",  self.handle_arrow_keys)
+        self.parentframe.master.bind_all("<Left>",   self.handle_arrow_keys)
+        self.parentframe.master.bind_all("<Prior>",  self.handle_arrow_keys)
+        self.parentframe.master.bind_all("<Next>",   self.handle_arrow_keys)
+        self.parentframe.master.bind_all("<Home>",   self.handle_arrow_keys)
+        self.parentframe.master.bind_all("<End>",    self.handle_arrow_keys)
+
+        self.parentframe.master.bind_all("<MouseWheel>",
+            lambda event=None: self.mouse_wheel(-math.trunc(math.copysign(1, event.delta))))
+        self.parentframe.master.bind_all('<Button-4>',
+            lambda event=None: self.mouse_wheel(-1))
+        self.parentframe.master.bind_all('<Button-5>',
+            lambda event=None: self.mouse_wheel(1))
+
+    def handle_motion(self, event):
+        """Handle mouse motion on table"""
+        self.tablecolheader.delete('resizesymbol')
+        self.delete('tooltip')
         rowclicked = self.get_row_clicked(event)
         colclicked = self.get_col_clicked(event)
-        if self.check_PageView(rowclicked) == 1:
+        if not (self.is_valid_page_row(rowclicked) and self.is_valid_col(colclicked)):
+            return
+        self.draw_tooltip(rowclicked, colclicked)
+
+    def handle_left_click(self, event):
+        """Respond to a single press"""        
+        rowclicked = self.get_row_clicked(event)
+        colclicked = self.get_col_clicked(event)
+        if not (self.is_valid_page_row(rowclicked) and self.is_valid_col(colclicked)):
             return
 
         self.startrow = rowclicked
-        self.endrow = rowclicked
+        self.endrow   = rowclicked
         self.startcol = colclicked
-        self.endcol = colclicked
-        #reset multiple selection list
-        self.multiplerowlist=[]
-        self.multiplerowlist.append(rowclicked)
-        if 0 <= rowclicked < self.rows and 0 <= colclicked < self.cols:
-            self.setSelectedRow(rowclicked)
-            self.setSelectedCol(colclicked)
-            self.draw_selected_rect(self.currentrow, self.currentcol)
-            self.drawSelectedRow()
-            self.tablerowheader.drawSelectedRows(rowclicked)
-
-    def handle_left_release(self,event):
-        self.endrow = self.get_row_clicked(event)
-
-    def handle_left_shift_click(self, event):
-        """Handle shift click, for selecting multiple rows"""
-        #Has same effect as mouse drag, so just use same method
-        self.handle_mouse_drag(event)
+        self.endcol   = colclicked
+        self.setSelectedRow(rowclicked)
+        self.setSelectedCol(colclicked)
+        self.clearSelected()
+        self.drawSelectedRow()
+        self.drawSelectedRect()
+        self.tablerowheader.drawSelectedRows(rowclicked)
 
     def handle_mouse_drag(self, event):
         """Handle mouse moved with button held down, multiple selections"""
-        rowover = self.get_row_clicked(event)
-        colover = self.get_col_clicked(event)
-        if colover == None or rowover == None:
+        rowclicked = self.get_row_clicked(event)
+        colclicked = self.get_col_clicked(event)
+        if not (self.is_valid_page_row(rowclicked) and self.is_valid_col(colclicked)):
             return
-        if self.check_PageView(rowover) == 1:
-            return
-        if rowover >= self.rows or self.startrow > self.rows:
-            return
-        else:
-            self.endrow = rowover
+        self.endrow = rowclicked
+        self.endcol = colclicked
         #do columns
-        if colover > self.cols or self.startcol > self.cols:
-            return
+        if self.endcol < self.startcol:
+            self.multiplecollist=range(self.endcol, self.startcol+1)
         else:
-            self.endcol = colover
-            if self.endcol < self.startcol:
-                self.multiplecollist=range(self.endcol, self.startcol+1)
-            else:
-                self.multiplecollist=range(self.startcol, self.endcol+1)
+            self.multiplecollist=range(self.startcol, self.endcol+1)
         #draw the selected rows
         if self.endrow != self.startrow:
             if self.endrow < self.startrow:
@@ -531,10 +466,17 @@ class TableCanvas(Canvas):
             if len(self.multiplecollist) >= 1:
                 self.drawMultipleCells()
             self.delete('multiplesel')
-        return
+
+    def handle_left_shift_click(self, event):
+        """Handle shift click, for selecting multiple rows"""
+        #Has same effect as mouse drag, so just use same method
+        self.handle_mouse_drag(event)
+
+    def handle_left_release(self,event):
+        self.endrow = self.get_row_clicked(event)
 
     def scroll_table_by_y(self, cnt):
-        row_cnt = len(self.rowrange)
+        row_cnt = self.model.get_page_row_count()
         h       = float(self.rowheight)
         self.currentrow = min(max(self.currentrow + cnt, 0), row_cnt-1)
 
@@ -570,9 +512,6 @@ class TableCanvas(Canvas):
     def handle_arrow_keys(self, event):
         """Handle arrow keys press"""
 
-        if self.rows==0:
-            return
-
         if event.keysym == 'Up':
             self.scroll_table_by_y(-1)
         elif event.keysym == 'Down':
@@ -582,243 +521,114 @@ class TableCanvas(Canvas):
         elif event.keysym == 'Next':
             self.scroll_table_by_y(10)
         elif event.keysym == 'Home':
-            self.scroll_table_by_y(-len(self.rowrange))
+            self.scroll_table_by_y(-self.model.get_page_row_count())
         elif event.keysym == 'End':
-            self.scroll_table_by_y(len(self.rowrange))            
+            self.scroll_table_by_y(self.model.get_page_row_count())
         elif event.keysym == 'Right':
             self.scroll_table_by_x(1)
         elif event.keysym == 'Left':
             self.scroll_table_by_x(-1)
 
-        self.draw_selected_rect(self.currentrow, self.currentcol)
+        self.startrow = self.currentrow
+        self.endrow   = self.currentrow
+        self.startcol = self.currentcol
+        self.endcol   = self.currentcol
+        self.setSelectedRow(self.currentrow)
+        self.setSelectedCol(self.currentcol)
+        self.clearSelected()
+        self.drawSelectedRow()
+        self.drawSelectedRect()
+        self.tablerowheader.drawSelectedRows(self.currentrow)
 
     def mouse_wheel(self, delta):
         """Handle mouse wheel scroll"""
         self.scroll_table_by_y(delta)
-        self.draw_selected_rect(self.currentrow, self.currentcol)
-
-    def handle_motion(self, event):
-        """Handle mouse motion on table"""
-        self.delete('tooltip')
-        row = self.get_row_clicked(event)
-        col = self.get_col_clicked(event)
-        if self.check_PageView(row) == 1:
-            return
-        if 0 <= row < self.rows and 0 <= col < self.cols:
-            self.draw_tooltip(row, col)
-
-    #--- Drawing stuff ---
-
-    def draw_grid(self):
-        """Draw the table grid lines"""
-        self.delete('gridline','text')
-        rows=len(self.rowrange)
-        cols=self.cols
-        w=self.cellwidth
-        h=self.rowheight
-        x_start=self.x_start
-        y_start=self.y_start
-
-        self.data={}
-        x_pos=x_start
-
-        if self.vertlines==1:
-            for col in range(cols+1):
-                x=self.col_positions[col]
-                self.create_line(x,y_start,x,y_start+rows*h, tag='gridline',
-                                     fill=self.grid_color, width=self.linewidth)
-
-        if self.horizlines==1:
-            for row in range(rows+1):
-                y_pos=y_start+row*h
-                self.create_line(x_start,y_pos,self.tablewidth,y_pos, tag='gridline',
-                                    fill=self.grid_color, width=self.linewidth)
-
-    def draw_rowheader(self):
-        """User has clicked to select a cell"""
-        self.delete('rowheader')
-        x_start=self.x_start
-        y_start=self.y_start
-        h=self.rowheight
-        rowpos=0
-        for row in self.rowrange:
-            x1,y1,x2,y2 = self.getCellCoords(rowpos,0)
-            self.create_rectangle(0,y1,x_start-2,y2,
-                                      fill='gray75',
-                                      outline='white',
-                                      width=1,
-                                      tag='rowheader')
-            self.create_text(x_start/2,y1+h/2,
-                                      text=row+1,
-                                      fill='black',
-                                      font=self.thefont,
-                                      tag='rowheader')
-            rowpos+=1
-
-    def draw_selected_rect(self, row, col, color=None):
-        """User has clicked to select a cell"""
-        if col >= self.cols:
-            return
-        self.delete('currentrect')
-        bg=self.selectedcolor
-        if color == None:
-            color = 'gray25'
-        w=3
-        x1,y1,x2,y2 = self.getCellCoords(row,col)
-        rect = self.create_rectangle(x1+w/2,y1+w/2,x2-w/2,y2-w/2,
-                                  fill=bg,
-                                  outline=color,
-                                  width=w,
-                                  stipple='gray50',
-                                  tag='currentrect')
-        #self.lower('currentrect')
-        #raise text above all
-        self.lift('celltext'+str(col)+'_'+str(row))
-        return
-
-    def draw_rect(self, row, col, color=None, tag=None, delete=1):
-        """Cell is colored"""
-        if delete==1:
-            self.delete('cellbg'+str(row)+str(col))
-        if color==None or color==self.cellbackgr:
-            return
-        else:
-            bg=color
-        if tag==None:
-            recttag='fillrect'
-        else:
-            recttag=tag
-        w=1
-        x1,y1,x2,y2 = self.getCellCoords(row,col)
-        rect = self.create_rectangle(x1+w/2,y1+w/2,x2-w/2,y2-w/2,
-                                  fill=bg,
-                                  outline=bg,
-                                  width=w,
-                                  tag=(recttag,'cellbg'+str(row)+str(col)))
-        self.lower(recttag)
-
-    def draw_Text(self, row, col, celltxt, fgcolor=None, align=None):
-        """Draw the text inside a cell area"""
-        self.delete('celltext'+str(col)+'_'+str(row))
-        h=self.rowheight
-        x1,y1,x2,y2 = self.getCellCoords(row,col)
-        w=x2-x1
-        # If celltxt is a number then we make it a string
-        import types
-        if type(celltxt) is types.FloatType or type(celltxt) is types.IntType:
-            celltxt=str(celltxt)
-        if w<=15:
-            return
-
-        fontsize = self.fontsize
-        scale = fontsize*1.2
-        total = len(celltxt)
         
-        if len(celltxt) > w/scale:           
-            celltxt=celltxt[0:int(w/fontsize*1.2)-3]
-        if len(celltxt) < total:
-            celltxt=celltxt+'..'            
-        if w < 25:
-            celltxt = ''
-        if fgcolor == None or fgcolor == "None":
-            fgcolor = 'black'
-        if align == None:
-            align = 'center'
-        elif align == 'w':
-            x1 = x1-w/2+1
+        self.startrow = self.currentrow
+        self.endrow   = self.currentrow
+        self.startcol = self.currentcol
+        self.endcol   = self.currentcol
+        self.setSelectedRow(self.currentrow)
+        self.setSelectedCol(self.currentcol)
+        self.clearSelected()
+        self.drawSelectedRow()
+        self.drawSelectedRect()
+        self.tablerowheader.drawSelectedRows(self.currentrow)
 
-        rect = self.create_text(x1+w/2,y1+h/2,
-                                  text=celltxt,
-                                  fill=fgcolor,
-                                  font=self.thefont,
-                                  anchor=align,
-                                  tag=('text','celltext'+str(col)+'_'+str(row)))
+    ###############################################
+    # Navigation
+    ###############################################
 
-    def drawSelectedRow(self):
-        """Draw the highlight rect for the currently selected row"""
-        self.delete('rowrect')
-        row=self.currentrow
-        x1,y1,x2,y2 = self.getCellCoords(row,0)
-        x2=self.tablewidth
-        rect = self.create_rectangle(x1,y1,x2,y2,
-                                  fill=self.rowselectedcolor,
-                                  outline=self.rowselectedcolor,
-                                  tag='rowrect')
-        self.lower('rowrect')
-        self.lower('fillrect')
+    def drawNavFrame(self):
+        """Draw the frame for selecting pages when paging is on"""
+        import Table_images
+        self.navFrame = Frame(self.parentframe)
+        self.navFrame.grid(row=4, column=0, columnspan=2, sticky='news', padx=1, pady=1, ipady=1)
+        pagingbuttons = { 'start' : self.first_Page,
+                          'prev'  : self.prev_Page,
+                          'next'  : self.next_Page,
+                          'end'   : self.last_Page}
+        images = { 'start' : Table_images.start(),
+                   'prev'  : Table_images.prev(),
+                   'next'  : Table_images.next(),
+                   'end'   : Table_images.end()}
+        skeys=['start', 'prev', 'next', 'end']
+        for i in skeys:
+            b = Button(self.navFrame, text=i, command=pagingbuttons[i], relief=GROOVE, image=images[i])
+            b.image = images[i]
+            b.pack(side=LEFT, ipadx=1, ipady=1)
+        txt = 'Страница %i из %i' % (self.model.get_current_page()+1, self.model.get_pages_count())
+        Label(self.navFrame, text=txt, fg='white', bg='#3366CC',relief=SUNKEN).pack(side=LEFT,ipadx=2,ipady=2,padx=4)
+        txt = '%i записей' % self.rows
+        Label(self.navFrame, text=txt).pack(side=LEFT,padx=3)
+        txt = 'В одну страницу'
+        Button(self.navFrame,text=txt,command=self.paging_Off, bg='#99CCCC',relief=GROOVE).pack(side=LEFT,padx=3)
 
-    def drawSelectedCol(self, col=None, delete=1):
-        """Draw an outline rect fot the current column selection"""
-        if delete == 1:
-            self.delete('colrect')
-        if col == None:
-            col=self.currentcol
-        w=2
-        x1,y1,x2,y2 = self.getCellCoords(0,col)
-        y2 = self.rows * self.rowheight
-        rect = self.create_rectangle(x1+w/2,y1+w/2,x2,y2+w/2,
-                                     outline='blue',width=w,
-                                     tag='colrect')
+    def first_Page(self):
+        if self.model.goto_first_page():
+            self.redrawTable()
 
-    def drawMultipleRows(self, rowlist):
-        """Draw more than one row selection"""
-        self.delete('multiplesel')
-        for r in rowlist:
-            if r > self.rows-1:
-                continue
-            x1,y1,x2,y2 = self.getCellCoords(r,0)
-            x2=self.tablewidth
-            rect = self.create_rectangle(x1,y1,x2,y2,
-                                      fill=self.multipleselectioncolor,
-                                      outline=self.rowselectedcolor,
-                                      tag=('multiplesel','rowrect'))
-        self.lower('multiplesel')
-        self.lower('fillrect')
+    def last_Page(self):
+        if self.model.goto_last_page():
+            self.redrawTable()
 
-    def drawMultipleCells(self):
-        """Draw an outline box for multiple cell selection"""
-        self.delete('multicellrect')
-        rows = self.multiplerowlist
-        cols = self.multiplecollist
-        w=2
-        x1,y1,a,b = self.getCellCoords(rows[0],cols[0])
-        c,d,x2,y2 = self.getCellCoords(rows[len(rows)-1],cols[len(cols)-1])
-        rect = self.create_rectangle(x1+w/2,y1+w/2,x2,y2,
-                             outline='blue',width=w,activefill='red',activestipple='gray25',
-                             tag='multicellrect')
+    def prev_Page(self):
+        if self.model.goto_prev_page():
+            self.redrawTable()
 
-    def draw_tooltip(self, row, col):
-        """Draw a tooltip showing contents of cell"""
+    def next_Page(self):
+        if self.model.goto_next_page():
+            self.redrawTable()
 
-        absrow = self.get_AbsoluteRow(row)
-        x1,y1,x2,y2 = self.getCellCoords(row,col)
-        w=x2-x1
-        text = self.model.get_value(col,absrow)
-        if isinstance(text, dict):
-            if text.has_key('link'):
-                text = text['link']
+    def paging_Off(self):
+        self.rows=self.model.get_row_count()
+        if self.rows >= 1000:
+            txt = 'Эта страница содержит более 1000 записей. Вы уверены?'
+            if not tkMessageBox.askyesno("Warning", txt, parent=self.parentframe):
+                return
+        self.model.set_paginal(False)
+        self.redrawTable()
 
-        # If text is a number we make it a string
-        import types
-        if type(text) is types.FloatType or type is types.IntType:
-            text=str(text)
-        if text == NoneType or text == '' or len(str(text))<=3:
-            return
-        import tkFont
-        sfont = tkFont.Font (family='Arial', size=12,weight='bold')
-        obj=self.create_text(x1+w/1.5,y2,text=text,
-                                anchor='w',
-                                font=sfont,tag='tooltip')
+    ###############################################    
+    # Navigation
+    ###############################################
 
-        box = self.bbox(obj)
-        x1=box[0]-1
-        y1=box[1]-1
-        x2=box[2]+1
-        y2=box[3]+1
+    def resizeTable(self, event):
+        """Respond to a resize event - redraws table"""
+        if self.autoresizecols == 1 and event != None:
+            self.cellwidth = (event.width - self.x_start - 24) / self.cols
+            self.redrawTable()
 
-        rect = self.create_rectangle(x1+1,y1+1,x2+1,y2+1,tag='tooltip',fill='black')
-        rect2 = self.create_rectangle(x1,y1,x2,y2,tag='tooltip',fill='lightyellow')
-        self.lift(obj)
+    def sortTable(self, sortcol):
+        self.model.resort(sortcol)
+        self.redrawTable()
+      
+    def resize_Column(self, col, width):
+        """Resize a column by dragging"""
+        self.model.get_column(col).width = width
+
+        self.set_colPositions()
+        self.redrawTable()
 
 class ColumnHeader(Canvas):
     """Class that takes it's size and rendering from a parent table
@@ -827,7 +637,6 @@ class ColumnHeader(Canvas):
     def __init__(self, parent, table, cfg):
         Canvas.__init__(self, parent, bg=cfg["bg_clr"], width=table.width, height=cfg["height"])
         self.table    = table
-        self.height   = cfg["height"]
         fnt           = cfg["font"]
         self.thefont  = tkFont.Font(family=fnt[0], size=fnt[1], weight=fnt[2])
         self.model    = self.table.getModel()
@@ -838,9 +647,10 @@ class ColumnHeader(Canvas):
         self.bind("<Motion>",          self.handle_mouse_move)
 
     def redraw(self):
+        h = int(self["height"])
         cols=self.model.get_column_count()
         self.tablewidth=self.table.tablewidth
-        self.configure(scrollregion=(0,0, self.table.tablewidth+self.table.x_start, self.height))
+        self.configure(scrollregion=(0,0, self.table.tablewidth+self.table.x_start, h))
         self.delete('gridline','text')
         self.atdivider = None
 
@@ -851,7 +661,6 @@ class ColumnHeader(Canvas):
             order_ch = ' ▼'
         else:
             order_ch = ' ▲'
-        h = self.height
 
         for col in range(cols):
             w=self.model.get_column(col).width
@@ -864,8 +673,7 @@ class ColumnHeader(Canvas):
 
             collabel = self.get_clipped_colname(self.model.get_column(col).caption, dop_sm, self.thefont, w)
 
-            line = self.create_line(x, 0, x, h, tag=('gridline', 'vertline'),
-                                 fill='white', width=2)
+            line = self.create_line(x, 0, x, h, tag=('gridline', 'vertline'), fill='white', width=2)
 
             self.create_text(x+w/2,h/2,
                                 text=collabel,
@@ -874,15 +682,11 @@ class ColumnHeader(Canvas):
                                 tag='text')
 
         x=self.table.col_positions[col+1]
-        self.create_line(x,0, x,h, tag='gridline',
-                        fill='white', width=2)
+        self.create_line(x,0, x,h, tag='gridline', fill='white', width=2)
 
     def handle_left_click(self,event):
         """Does cell selection when mouse is clicked on canvas"""
-        self.table.delete('entry')
         self.table.delete('multicellrect')
-        #set all rows selected
-        self.table.allrows = True
         
         if self.atdivider == 1:
             x=int(self.canvasx(event.x))          
@@ -915,7 +719,7 @@ class ColumnHeader(Canvas):
             self.delete('resizeline')
             self.table.create_line(x, 0, x, self.table.rowheight*self.table.rows,
                                 width=2, fill='gray', tag='resizeline')
-            self.create_line(x, 0, x, self.height,
+            self.create_line(x, 0, x, int(self["height"]),
                                 width=2, fill='gray', tag='resizeline')
 
     def handle_mouse_move(self, event):
@@ -956,7 +760,7 @@ class ColumnHeader(Canvas):
         """Draw a symbol to show that col can be resized when mouse here"""
         self.delete('resizesymbol')
         
-        h=self.height
+        h=int(self["height"])
         x1,y1,x2,y2 = self.table.getCellCoords(0,col)
 
         self.create_polygon(x2-3,h/4, x2-10,h/2, x2-3,h*3/4, tag='resizesymbol',
@@ -969,31 +773,23 @@ class RowHeader(Canvas):
        takes it's size and rendering from the parent table
        This also handles row/record selection as opposed to cell
        selection"""
-    def __init__(self, parent=None, table=None):
-        Canvas.__init__(self, parent, bg='gray75', width=40, height=None )
+    def __init__(self, parent, table, cfg):
+        Canvas.__init__(self, parent, bg=cfg["bg_clr"], width=cfg["width"], height=table.height)
+        self.table = table
+        self.x_start = 40 #todo
+        self.inset = 1 #todo
+        self.startrow = self.endrow = None
+        self.model = self.table.getModel()
+        self.bind('<Button-1>',self.handle_left_click)
+        self.bind("<Control-Button-1>", self.handle_left_ctrl_click)
+        self.bind('<B1-Motion>', self.handle_mouse_drag)
 
-        if table != None:
-            self.table = table
-            self.width = 40
-            self.x_start = 40
-            self.inset = 1
-            #self.config(width=self.width)
-            self.config(height = self.table.height)
-            self.startrow = self.endrow = None
-            self.model = self.table.getModel()
-            self.bind('<Button-1>',self.handle_left_click)
-            self.bind("<ButtonRelease-1>", self.handle_left_release)
-            self.bind("<Control-Button-1>", self.handle_left_ctrl_click)
-            self.bind('<B1-Motion>', self.handle_mouse_drag)
+    def redraw(self):
+        """Redraw row header"""       
+        self.configure(scrollregion=(0,0, int(self["width"]),
+                                          self.table.rowheight*self.table.model.get_page_row_count()+10
+                                          ))
 
-    def redraw(self, paging = 0):
-        """Redraw row header"""
-        if paging == 1:
-            self.height = self.table.rowheight * self.table.rowsperpage+10
-        else:
-            self.height = self.table.rowheight * self.table.rows+10
-     
-        self.configure(scrollregion=(0,0, self.width, self.height))
         self.delete('rowheader','text')
         self.delete('rect')
 
@@ -1002,7 +798,7 @@ class RowHeader(Canvas):
         y_start=self.table.y_start
         h = self.table.rowheight
         rowpos=0
-        for row in self.table.rowrange:
+        for row in self.table.model.get_page_rows():
             x1,y1,x2,y2 = self.table.getCellCoords(rowpos,0)
             self.create_rectangle(0,y1,x_start-w,y2,
                                       fill='gray75',
@@ -1012,64 +808,41 @@ class RowHeader(Canvas):
             self.create_text(x_start/2,y1+h/2,
                                       text=row+1,
                                       fill='black',
-                                      font=self.table.thefont,
+                                      font=self.table.text_font,
                                       tag='text')
             rowpos+=1
-        return
-
-    def clearSelected(self):
-        self.delete('rect')
-        return
 
     def handle_left_click(self, event):
         rowclicked = self.table.get_row_clicked(event)
         self.startrow = rowclicked
-        if 0 <= rowclicked < self.table.rows:
+        maxrow = self.table.model.get_page_row_count()
+        if 0 <= rowclicked < maxrow:
             self.delete('rect')
-            self.table.delete('entry')
             self.table.delete('multicellrect')
-            #set row selected
             self.table.setSelectedRow(rowclicked)
             self.table.drawSelectedRow()
             self.drawSelectedRows(self.table.currentrow)
-        return
-
-    def handle_left_release(self,event):
-
-        return
 
     def handle_left_ctrl_click(self, event):
         """Handle ctrl clicks - for multiple row selections"""
         rowclicked = self.table.get_row_clicked(event)
-        multirowlist = self.table.multiplerowlist
-        if 0 <= rowclicked < self.table.rows:
+        maxrow = self.table.model.get_page_row_count()
+        if 0 <= rowclicked < maxrow:
+            multirowlist = self.table.multiplerowlist
             if rowclicked not in multirowlist:
                 multirowlist.append(rowclicked)
             else:
                 multirowlist.remove(rowclicked)
             self.table.drawMultipleRows(multirowlist)
             self.drawSelectedRows(multirowlist)
-        return
-
-    def handle_mouse_drag(self, event):
-        """Handle mouse drag for mult row selection"""
-        rowover = self.table.get_row_clicked(event)
-        colover = self.table.get_col_clicked(event)
-        if colover == None or rowover == None:
-            return
-        if self.table.check_PageView(rowover) == 1:
-            return
 
     def handle_mouse_drag(self, event):
         """Handle mouse moved with button held down, multiple selections"""
-        rowover = self.table.get_row_clicked(event)
-        colover = self.table.get_col_clicked(event)
-        if rowover == None or self.table.check_PageView(rowover) == 1:
-            return
-        if rowover >= self.table.rows or self.startrow > self.table.rows:
+        rowclicked = self.table.get_row_clicked(event)
+        if self.table.model.get_page_row_count() <= rowclicked or self.startrow > self.table.rows:
             return
         else:
-            self.endrow = rowover
+            self.endrow = rowclicked
         #draw the selected rows
         if self.endrow != self.startrow:
             if self.endrow < self.startrow:
@@ -1081,10 +854,9 @@ class RowHeader(Canvas):
             self.table.drawMultipleRows(rowlist)
         else:
             self.table.multiplerowlist = []
-            self.table.multiplerowlist.append(rowover)
-            self.drawSelectedRows(rowover)
+            self.table.multiplerowlist.append(rowclicked)
+            self.drawSelectedRows(rowclicked)
             self.table.drawMultipleRows(self.table.multiplerowlist)
-        return
 
     def drawSelectedRows(self, rows=None):
         """Draw selected rows, accepts a list or integer"""
@@ -1096,7 +868,6 @@ class RowHeader(Canvas):
            rowlist = rows
         for r in rowlist:
             self.draw_rect(r, delete=0)
-        return
 
     def draw_rect(self, row=None, tag=None, color=None, outline=None, delete=1):
         """Draw a rect representing row selection"""
@@ -1117,7 +888,6 @@ class RowHeader(Canvas):
                                       width=w,
                                       tag=tag)
         self.lift('text')
-        return
 
 class AutoScrollbar(Scrollbar):
     # a scrollbar that hides itself if it's not needed.  only
