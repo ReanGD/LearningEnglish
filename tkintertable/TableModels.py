@@ -24,7 +24,7 @@ class ErrTableModel(Exception):
         return repr(self.value)
 
 class Column:
-    def __init__(self, caption, width = None, typedata = None):
+    def __init__(self, caption, width = None, typedata = None, align = None):
         if len(caption) == 0:
             raise ErrColumnList("Create a column with an empty caption")
         self.caption = caption
@@ -34,6 +34,9 @@ class Column:
         if typedata == None:
             typedata = 'text'
         self.typedata = typedata
+        if align == None:
+            align = 'center'
+        self.align = align
 
 class ColumnList(object):
     def __init__(self):
@@ -48,8 +51,8 @@ class ColumnList(object):
     def count(self):
         return len(self.columns)
 
-    def add(self, caption, width = None, typedata = None):
-        self.columns.append(Column(caption, width, typedata))
+    def add(self, caption, width = None, typedata = None, align = None):
+        self.columns.append(Column(caption, width, typedata, align))
 
     def clear(self):
         self.columns         = []
@@ -76,6 +79,8 @@ class RowList(object):
     def get(self, col, row):
         if self.count_col() > col and self.count_row() > row:
             return self.rows[row][col]
+        else:
+            return None
 
     def count_col(self):
         return self.cnt_col
@@ -102,7 +107,7 @@ class RowList(object):
     def sort(self, col, is_reverse, typedata):
         def key(row):
             sort_key = row[col]
-            if typedata == 'number':
+            if typedata in ('number', 'percent'):
                 sort_key = float(sort_key)
             return (sort_key)
         self.rows = sorted(self.rows, key = key, reverse = is_reverse)
@@ -119,8 +124,8 @@ class TableModel(object):
         self.data        = RowList()
         self.recalc_page(0)
 
-    def add_column(self, caption, width = None, typedata = None):
-        self.columns.add(caption, width, typedata)
+    def add_column(self, caption, width = None, typedata = None, align = None):
+        self.columns.add(caption, width, typedata, align)
         self.data.create(self.columns.count())
         self.recalc_page(self.currentpage)
 
@@ -191,7 +196,11 @@ class TableModel(object):
         return self.columns.get(col)
 
     def get_value(self, col, row):
-        return self.data.get(col, row)
+        text = self.data.get(col, row)
+        if text != None:
+            if self.get_column(col).typedata == 'percent':
+                text += u' %'
+        return text
 
     def get_page_rows(self):
         return self.rowrange

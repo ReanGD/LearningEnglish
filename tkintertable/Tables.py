@@ -26,14 +26,62 @@ import tkFont
 import math
 from types import *
 
+class ClippedText:
+    def __init__(self, font, clip_str):
+        self.font     = font
+        self.clip_str = clip_str
+        self.ch_len   = {}        
+        self.len_clip_str = self.font.measure(clip_str)
+
+    def len_ch(self, ch):
+        cache_len = self.ch_len.get(ch, None)
+        if cache_len == None:
+            cache_len = self.font.measure(ch)
+            self.ch_len[ch] = cache_len
+        return cache_len
+
+    def clipped_text(self, text, dop_str, width):
+        if len(dop_str) == 0:
+            len_dop_str = 0
+        else:
+            len_dop_str = self.font.measure(dop_str)
+
+        if width < len_dop_str:
+            return u''
+
+        len_text = len(text)
+        if len_text == 0:
+            return dop_str
+
+        text_width = self.font.measure(text) + len_dop_str
+        if width >= text_width:
+            return text + dop_str
+
+        if width <= len_dop_str + self.len_clip_str:
+            return dop_str
+
+        add_str = self.clip_str + dop_str
+        if len_text == 1:
+            return add_str
+
+        text_width += self.len_clip_str
+        for i in range(0, len_text):
+            ind = -i-1
+            text_width -= self.len_ch(text[ind])
+            if text_width <= width:
+                return text[:ind] + add_str
+        return add_str
+        
+
 class TableCanvas(Canvas):
     """A tkinter class for providing table functionality"""
 
-    def __init__(self, parent, model, newdict=None, width=None, height=None, **kwargs):
+    def __init__(self, parent, model, newdict=None, width=None, height=None, callback = None, **kwargs):
         Canvas.__init__(self, parent, bg='white',
                          width=width, height=height,
                          relief=GROOVE,
-                         scrollregion=(0,0,300,200))
+                         scrollregion=(0,0,300,200)                         
+                         )
 
         self.col_positions=[]       #record current column grid positions
         self.currentrow = 0
@@ -43,8 +91,7 @@ class TableCanvas(Canvas):
         self.multiplerowlist=[]
         self.multiplecollist=[]
         self.navFrame = None
-
-
+        self.callback = callback
         
         self.parentframe = parent
         self.width=width
@@ -84,6 +131,7 @@ class TableCanvas(Canvas):
         self.text_color = 'black'
         self.tooltip_font_opt = ("Arial", 12, "bold")
         self.text_font_opt    = ("Arial", 11, "normal")
+        self.padding = (5, 5)
         self.col_header_cfg = {
              "height"   : 20
             ,"font"     : ("Arial", 11, "normal")
@@ -110,6 +158,7 @@ class TableCanvas(Canvas):
         self.tooltip_font = tkFont.Font(family = fnt[0], size = fnt[1], weight = fnt[2])
         fnt = self.text_font_opt
         self.text_font = tkFont.Font(family = fnt[0], size = fnt[1], weight = fnt[2])
+        self.clipped = ClippedText(self.text_font, u"..")
 
         #Add the table and header to the frame
         self.Yscrollbar = AutoScrollbar(self.parentframe,orient=VERTICAL,command=self.set_yviews)
@@ -231,30 +280,36 @@ class TableCanvas(Canvas):
             self.create_line(x_start, y, x_stop, y, tag='gridline',
                                 fill=self.grid_color, width=1)
 
-    def draw_Text(self, row, col, celltxt):
+    def draw_Text(self, row, col, celltxt, align):
         """Draw the text inside a cell area"""
         self.delete('celltext'+str(col)+'_'+str(row))
+        clr = self.text_color
         x1,y1,x2,y2 = self.getCellCoords(row,col)
         h = self.rowheight
         w = x2-x1
+        padding_left  = self.padding[0]
+        padding_right = self.padding[1]
+        allow_w = w - padding_left - padding_right
 
-        if w <= 25:
-            return
+        y1 = y1 + h/2
+        if align == 'right':
+            anchor = E
+            x1 = x1 + w - padding_right
+        elif align == 'left':
+            anchor = W
+            x1 = x1 + padding_left
+        else:
+            anchor = CENTER
+            x1 = x1 + padding_left + allow_w/2
 
-        fontsize = self.text_font_opt[1]
-        scale    = fontsize*1.2
-        total    = len(celltxt)
-        
-        if len(celltxt) > w/scale:           
-            celltxt = celltxt[0:int(w/fontsize*1.2)-3]
-        if len(celltxt) < total:
-            celltxt += '..'
+        if self.callback != None:
+            celltxt, clr = self.callback(row, col, celltxt, clr)
 
-        self.create_text(x1 + w/2, y1 + h/2,
-                         text   = celltxt,
-                         fill   = self.text_color,
+        self.create_text(x1, y1,
+                         text   = self.clipped.clipped_text(celltxt, u"", allow_w),
+                         fill   = clr,
                          font   = self.text_font,
-                         anchor = 'center',
+                         anchor = anchor,
                          tag    = ('text','celltext'+str(col)+'_'+str(row)))
 
     def draw_tooltip(self, row, col):
@@ -365,10 +420,11 @@ class TableCanvas(Canvas):
         self.tablerowheader.redraw()
 
         #now draw model data in cells
-        for rowpos, row in enumerate(self.model.get_page_rows()):
-            for col in range(self.cols):
+        for col in range(self.cols):
+            align = self.model.get_column(col).align
+            for rowpos, row in enumerate(self.model.get_page_rows()):
                 text = self.model.get_value(col, row)
-                self.draw_Text(rowpos, col, text)
+                self.draw_Text(rowpos, col, text, align)
 
         self.startrow = 0
         self.endrow   = 0
@@ -639,6 +695,7 @@ class ColumnHeader(Canvas):
         self.table    = table
         fnt           = cfg["font"]
         self.thefont  = tkFont.Font(family=fnt[0], size=fnt[1], weight=fnt[2])
+        self.clipped  = ClippedText(self.thefont, u".")
         self.model    = self.table.getModel()
         self.font_clr = cfg["font_clr"]
         self.bind("<Button-1>",        self.handle_left_click)
@@ -658,25 +715,26 @@ class ColumnHeader(Canvas):
             return
 
         if self.model.get_sort_is_reverse():
-            order_ch = ' ▼'
+            order_ch = u" ▼"
         else:
-            order_ch = ' ▲'
+            order_ch = u" ▲"
 
         for col in range(cols):
             w=self.model.get_column(col).width
             x=self.table.col_positions[col]
 
             if col == self.model.get_sort_index():
-                dop_sm = order_ch
+                dop_str = order_ch
             else:
-                dop_sm = ''
+                dop_str = u""
 
-            collabel = self.get_clipped_colname(self.model.get_column(col).caption, dop_sm, self.thefont, w)
+            text = self.model.get_column(col).caption
+            text = self.clipped.clipped_text(text, dop_str, w)
 
             line = self.create_line(x, 0, x, h, tag=('gridline', 'vertline'), fill='white', width=2)
 
             self.create_text(x+w/2,h/2,
-                                text=collabel,
+                                text=text,
                                 fill=self.font_clr,
                                 font=self.thefont,
                                 tag='text')
@@ -734,20 +792,6 @@ class ColumnHeader(Canvas):
             else:
                 self.atdivider = 1
                 self.draw_resize_symbol(col)
-
-    def get_clipped_colname(self, text, dop_sm, font, max_width):
-        new_text = text+dop_sm
-        if font.measure(new_text) <= max_width:
-            return new_text
-        for i in range(len(text)-1, 0, -1):
-            new_text = text[:i] + '.' + dop_sm
-            if font.measure(new_text) <= max_width:
-                return new_text
-        new_text = dop_sm
-        if font.measure(new_text) <= max_width:
-            return new_text
-        else:
-            return ''
 
     def get_col_for_resize(self, pos_x):
         dt = 10
