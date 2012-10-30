@@ -76,13 +76,14 @@ class ClippedText:
 class TableCanvas(Canvas):
     """A tkinter class for providing table functionality"""
 
-    def __init__(self, parent, model, newdict=None, width=None, height=None, callback = None, **kwargs):
+    def __init__(self, parent, model, newdict=None, width=None, height=None, callback = None, sort_enable = True, **kwargs):
         Canvas.__init__(self, parent, bg='white',
                          width=width, height=height,
                          relief=GROOVE,
-                         scrollregion=(0,0,300,200)                         
+                         scrollregion=(0,0,300,200)               
                          )
 
+        self.sort_enable = sort_enable
         self.col_positions=[]       #record current column grid positions
         self.currentrow = 0
         self.currentcol = 0
@@ -129,20 +130,19 @@ class TableCanvas(Canvas):
         self.selectedcolor = 'yellow'
         self.grid_color = '#ABB1AD'
         self.text_color = 'black'
-        self.tooltip_font_opt = ("Arial", 12, "bold")
-        self.text_font_opt    = ("Arial", 11, "normal")
+        self.tooltip_font_opt = ("Arial", -16, "bold") #12
+        self.text_font_opt    = ("Arial", -15, "normal") #11
         self.padding = (5, 5)
         self.col_header_cfg = {
              "height"   : 20
-            ,"font"     : ("Arial", 11, "normal")
+            ,"font"     : ("Arial", -15, "normal") #11
             ,"bg_clr"   : "gray25"
             ,"font_clr" : "white"
             }
         self.row_header_cfg = {
              "width"    : 40
-            ,"font"     : ("Arial", 11, "normal")
+            ,"font"     : ("Arial", -15, "normal") #11
             ,"bg_clr"   : "gray25"
-            ,"font_clr" : "white"
             }
 
     def getModel(self):
@@ -175,8 +175,8 @@ class TableCanvas(Canvas):
         self.tablecolheader.grid(row=0,column=1,rowspan=1,sticky='news',pady=0,ipady=0)
         self.tablerowheader.grid(row=1,column=0,rowspan=1,sticky='news',pady=0,ipady=0)
         self.grid(row=1,column=1,rowspan=1,sticky='news',pady=0,ipady=0)
-        # if self.model.get_row_count()<500:
-        #     self.adjust_colWidths()
+
+        self.adjust_colWidths()
         self.redrawTable()
         self.parentframe.bind("<Configure>", self.resizeTable)
         self.tablecolheader.xview("moveto", 0)
@@ -254,6 +254,20 @@ class TableCanvas(Canvas):
             if colpos < x <= nextpos:
                 return ind
         return None
+
+    def adjust_colWidths(self):
+        padding_len = self.padding[0] + self.padding[1]
+        header_font = self.tablecolheader.get_font()
+        for col in range(0,self.model.get_column_count()):
+            text_len = self.model.get_column(col).width
+            if text_len == None:
+                text_len = 0
+            text = self.model.get_column(col).caption
+            text_len = max(text_len, header_font.measure(text)+padding_len)
+            for row in range(0, self.model.get_row_count()):
+                text = self.model.get_value(col, row)
+                text_len = max(text_len, self.text_font.measure(text)+padding_len)
+            self.model.get_column(col).width = text_len
 
     ###############################################
     # Draw
@@ -675,16 +689,22 @@ class TableCanvas(Canvas):
             self.cellwidth = (event.width - self.x_start - 24) / self.cols
             self.redrawTable()
 
-    def sortTable(self, sortcol):
-        self.model.resort(sortcol)
-        self.redrawTable()
-      
     def resize_Column(self, col, width):
         """Resize a column by dragging"""
         self.model.get_column(col).width = width
 
         self.set_colPositions()
         self.redrawTable()
+
+    def sortTable(self, sortcol):
+        if self.sort_enable:
+            if self.model.get_sort_index() == sortcol:
+                is_reverse = not self.model.get_sort_is_reverse()
+            else:
+                is_reverse = False
+
+            self.model.sort(sortcol, is_reverse)
+            self.redrawTable()
 
 class ColumnHeader(Canvas):
     """Class that takes it's size and rendering from a parent table
@@ -702,6 +722,9 @@ class ColumnHeader(Canvas):
         self.bind("<ButtonRelease-1>", self.handle_left_release)
         self.bind("<B1-Motion>",       self.handle_mouse_drag)
         self.bind("<Motion>",          self.handle_mouse_move)
+
+    def get_font(self):
+        return self.thefont
 
     def redraw(self):
         h = int(self["height"])
@@ -723,7 +746,7 @@ class ColumnHeader(Canvas):
             w=self.model.get_column(col).width
             x=self.table.col_positions[col]
 
-            if col == self.model.get_sort_index():
+            if col == self.model.get_sort_index() and self.table.sort_enable:
                 dop_str = order_ch
             else:
                 dop_str = u""
@@ -824,6 +847,8 @@ class RowHeader(Canvas):
         self.inset = 1 #todo
         self.startrow = self.endrow = None
         self.model = self.table.getModel()
+        fnt          = cfg["font"]
+        self.thefont = tkFont.Font(family=fnt[0], size=fnt[1], weight=fnt[2])
         self.bind('<Button-1>',self.handle_left_click)
         self.bind("<Control-Button-1>", self.handle_left_ctrl_click)
         self.bind('<B1-Motion>', self.handle_mouse_drag)
@@ -852,7 +877,7 @@ class RowHeader(Canvas):
             self.create_text(x_start/2,y1+h/2,
                                       text=row+1,
                                       fill='black',
-                                      font=self.table.text_font,
+                                      font=self.thefont,
                                       tag='text')
             rowpos+=1
 

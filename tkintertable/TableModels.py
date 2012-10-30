@@ -28,8 +28,6 @@ class Column:
         if len(caption) == 0:
             raise ErrColumnList("Create a column with an empty caption")
         self.caption = caption
-        if width == None:
-            width = len(caption)*10
         self.width = width
         if typedata == None:
             typedata = 'text'
@@ -105,12 +103,19 @@ class RowList(object):
         self.cnt_col = 0
 
     def sort(self, col, is_reverse, typedata):
-        def key(row):
-            sort_key = row[col]
+        def comparer(left, right):
             if typedata in ('number', 'percent'):
-                sort_key = float(sort_key)
-            return (sort_key)
-        self.rows = sorted(self.rows, key = key, reverse = is_reverse)
+                left_col  = float(left[col])
+                right_col = float(right[col])
+            else:
+                left_col  = left[col].strip().lower()
+                right_col = right[col].strip().lower()
+            result = cmp(left_col, right_col)
+            if (result != 0) or (result == 0 and col == 0):
+                return -result if is_reverse else result
+            else:
+                return cmp(left[0].strip().lower(), right[0].strip().lower())
+        self.rows = sorted(self.rows, cmp=comparer)
 
 class TableModel(object):
     def __init__(self, rowsperpage = 100, paginal = True):
@@ -133,8 +138,7 @@ class TableModel(object):
         self.data.add(row)
         self.recalc_page(self.currentpage)
 
-    def resort(self, col):
-        is_reverse = not self.get_sort_is_reverse()
+    def sort(self, col, is_reverse):
         self.columns.set_sort(col, is_reverse)
         self.data.sort(col, is_reverse, self.columns.get(col).typedata)
 
