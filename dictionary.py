@@ -69,7 +69,7 @@ class Dict:
 		# дополняем ни разу не изучаемыми словами
 		if len(studied_words) < cnt_study_words:
 			for wrd, stat in self.loaded_words(type_pr):
-				if stat.get_total_answer() == 0:
+				if stat.get_total_answer() == 0 and wrd not in (learned_words+studied_words):
 					studied_words.append(wrd)
 					if len(studied_words) == cnt_study_words:
 						break
