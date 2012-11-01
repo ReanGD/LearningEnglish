@@ -149,6 +149,10 @@ class TableCanvas(Canvas):
         """Get the current table model"""
         return self.model
 
+    def setModel(self, model):
+        self.model = model
+        self.redrawTable()
+
     def createTableFrame(self):
         """Adds column header and scrollbars and combines them with
            the current table adding all to the master frame provided in constructor.
@@ -177,8 +181,7 @@ class TableCanvas(Canvas):
         self.grid(row=1,column=1,rowspan=1,sticky='news',pady=0,ipady=0)
 
         self.adjust_colWidths()
-        self.redrawTable()
-        self.parentframe.bind("<Configure>", self.resizeTable)
+        self.redrawTable()        
         self.tablecolheader.xview("moveto", 0)
         self.xview("moveto", 0)
 
@@ -262,7 +265,7 @@ class TableCanvas(Canvas):
             text_len = self.model.get_column(col).width
             if text_len == None:
                 text_len = 0
-            text = self.model.get_column(col).caption
+            text = self.model.get_column(col).caption + u" ▼"
             text_len = max(text_len, header_font.measure(text)+padding_len)
             for row in range(0, self.model.get_row_count()):
                 text = self.model.get_value(col, row)
@@ -478,6 +481,8 @@ class TableCanvas(Canvas):
             lambda event=None: self.mouse_wheel(-1))
         self.parentframe.master.bind_all('<Button-5>',
             lambda event=None: self.mouse_wheel(1))
+
+        self.parentframe.bind("<Configure>", self.resizeTable)
 
     def handle_motion(self, event):
         """Handle mouse motion on table"""
@@ -716,7 +721,6 @@ class ColumnHeader(Canvas):
         fnt           = cfg["font"]
         self.thefont  = tkFont.Font(family=fnt[0], size=fnt[1], weight=fnt[2])
         self.clipped  = ClippedText(self.thefont, u".")
-        self.model    = self.table.getModel()
         self.font_clr = cfg["font_clr"]
         self.bind("<Button-1>",        self.handle_left_click)
         self.bind("<ButtonRelease-1>", self.handle_left_release)
@@ -728,7 +732,7 @@ class ColumnHeader(Canvas):
 
     def redraw(self):
         h = int(self["height"])
-        cols=self.model.get_column_count()
+        cols=self.table.model.get_column_count()
         self.tablewidth=self.table.tablewidth
         self.configure(scrollregion=(0,0, self.table.tablewidth+self.table.x_start, h))
         self.delete('gridline','text')
@@ -737,21 +741,21 @@ class ColumnHeader(Canvas):
         if cols == 0:
             return
 
-        if self.model.get_sort_is_reverse():
+        if self.table.model.get_sort_is_reverse():
             order_ch = u" ▼"
         else:
             order_ch = u" ▲"
 
         for col in range(cols):
-            w=self.model.get_column(col).width
+            w=self.table.model.get_column(col).width
             x=self.table.col_positions[col]
 
-            if col == self.model.get_sort_index() and self.table.sort_enable:
+            if col == self.table.model.get_sort_index() and self.table.sort_enable:
                 dop_str = order_ch
             else:
                 dop_str = u""
 
-            text = self.model.get_column(col).caption
+            text = self.table.model.get_column(col).caption
             text = self.clipped.clipped_text(text, dop_str, w)
 
             line = self.create_line(x, 0, x, h, tag=('gridline', 'vertline'), fill='white', width=2)
@@ -846,7 +850,6 @@ class RowHeader(Canvas):
         self.x_start = 40 #todo
         self.inset = 1 #todo
         self.startrow = self.endrow = None
-        self.model = self.table.getModel()
         fnt          = cfg["font"]
         self.thefont = tkFont.Font(family=fnt[0], size=fnt[1], weight=fnt[2])
         self.bind('<Button-1>',self.handle_left_click)
