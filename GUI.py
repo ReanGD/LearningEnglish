@@ -24,12 +24,12 @@ class StatisticDialog(Toplevel):
 		Toplevel.__init__(self, parent) #todo
 		
 		self.withdraw()
-		self.body(statistic)		
+		self.body(statistic)
 		
 		self.transient(parent)
 		self.parent = parent
-
-		width  = min(1050, self.winfo_screenwidth())
+		
+		width  = min(self.table_stat.get_totalWidth(), self.winfo_screenwidth())
 		height = min(750, self.winfo_screenheight())
 		x = (self.winfo_screenwidth() - width) / 2
 		y = (self.winfo_screenheight() - height) / 2
@@ -64,10 +64,10 @@ class StatisticDialog(Toplevel):
 
 		self.model_cmn = TableModel(200, False)
 		self.model_cmn.add_column(_("clm_name"),       typedata = 'text',    align='left')
-		self.model_cmn.add_column(_("clm_ru_en_cnt"),  typedata = 'number',  align='right')
-		self.model_cmn.add_column(_("clm_en_ru_cnt"),  typedata = 'number',  align='right')
-		self.model_cmn.add_column(_("clm_ru_en_pers"), typedata = 'percent', align='right')
-		self.model_cmn.add_column(_("clm_en_ru_pers"), typedata = 'percent', align='right')
+		self.model_cmn.add_column(_("clm_ru_en_cnt"),  typedata = 'number',  align='right', max_val=u"99999")
+		self.model_cmn.add_column(_("clm_en_ru_cnt"),  typedata = 'number',  align='right', max_val=u"99999")
+		self.model_cmn.add_column(_("clm_ru_en_pers"), typedata = 'percent', align='right', max_val=u"100.0 %")
+		self.model_cmn.add_column(_("clm_en_ru_pers"), typedata = 'percent', align='right', max_val=u"100.0 %")
 
 		row_name = [[_("row_learned")], [_("row_study")], [_("row_learn")], [_("row_total")]]
 		for row in [row_name[i] + it for i, it in enumerate(statistic.get_common_stat())]:
@@ -81,10 +81,10 @@ class StatisticDialog(Toplevel):
 		self.model_ru_en.add_column(_("clm_word"),          typedata = 'text',    align='left')
 		self.model_ru_en.add_column(_("clm_transcription"), typedata = 'text',    align='left')
 		self.model_ru_en.add_column(_("clm_translate"),     typedata = 'text',    align='left')
-		self.model_ru_en.add_column(_("clm_cnt_suc"),       typedata = 'number',  align='right')
-		self.model_ru_en.add_column(_("clm_cnt_err"),       typedata = 'number',  align='right')
-		self.model_ru_en.add_column(_("clm_pers_suc"),      typedata = 'percent', align='right')
-		self.model_ru_en.add_column(_("clm_state"),         typedata = 'text',    align='left')
+		self.model_ru_en.add_column(_("clm_cnt_suc"),       typedata = 'number',  align='right', max_val=u"999")
+		self.model_ru_en.add_column(_("clm_cnt_err"),       typedata = 'number',  align='right', max_val=u"999")
+		self.model_ru_en.add_column(_("clm_pers_suc"),      typedata = 'percent', align='right', max_val=u"100.0 %")
+		self.model_ru_en.add_column(_("clm_state"),         typedata = 'text',    align='left', max_val=_("st_study")+u"  ")
 
 		for row in statistic.get_ru_en():
 			self.model_ru_en.add_row(row)
@@ -128,21 +128,25 @@ class StatisticDialog(Toplevel):
 			return celltxt, clr
 
 	def show_ru_en(self):
+		isReDraw = self.table_stat.getModel() != self.model_ru_en or self.btCmnStat["relief"] == "sunken"
 		self.btRuEn["relief"]    = "sunken"
 		self.btEnRu["relief"]    = "raised"
 		self.btCmnStat["relief"] = "raised"
-		self.table_stat.setModel(self.model_ru_en)
-		self.table_stat_cmn_frame.grid_forget()
-		self.table_stat_frame.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)
+		if isReDraw:
+			self.table_stat.setModel(self.model_ru_en)
+			self.table_stat_cmn_frame.grid_forget()
+			self.table_stat_frame.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)
 		self.table_stat.do_bindings()
 
 	def show_en_ru(self):
+		isReDraw = self.table_stat.getModel() != self.model_en_ru or self.btCmnStat["relief"] == "sunken"
 		self.btRuEn["relief"]    = "raised"
 		self.btEnRu["relief"]    = "sunken"
 		self.btCmnStat["relief"] = "raised"
-		self.table_stat.setModel(self.model_en_ru)
-		self.table_stat_cmn_frame.grid_forget()
-		self.table_stat_frame.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)
+		if isReDraw:
+			self.table_stat.setModel(self.model_en_ru)
+			self.table_stat_cmn_frame.grid_forget()
+			self.table_stat_frame.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)
 		self.table_stat.do_bindings()
 
 	def show_common_stat(self):

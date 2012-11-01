@@ -181,7 +181,7 @@ class TableCanvas(Canvas):
         self.grid(row=1,column=1,rowspan=1,sticky='news',pady=0,ipady=0)
 
         self.adjust_colWidths()
-        self.redrawTable()        
+        self.redrawTable()
         self.tablecolheader.xview("moveto", 0)
         self.xview("moveto", 0)
 
@@ -258,18 +258,33 @@ class TableCanvas(Canvas):
                 return ind
         return None
 
+    def get_totalWidth(self):
+        return self.tablewidth + self.tablerowheader.x_start + int(self.Yscrollbar["width"]) + 8
+
     def adjust_colWidths(self):
         padding_len = self.padding[0] + self.padding[1]
         header_font = self.tablecolheader.get_font()
         for col in range(0,self.model.get_column_count()):
-            text_len = self.model.get_column(col).width
-            if text_len == None:
+            clmn = self.model.get_column(col)
+
+            if clmn.width is None:
                 text_len = 0
-            text = self.model.get_column(col).caption + u" ▼"
-            text_len = max(text_len, header_font.measure(text)+padding_len)
-            for row in range(0, self.model.get_row_count()):
-                text = self.model.get_value(col, row)
-                text_len = max(text_len, self.text_font.measure(text)+padding_len)
+            else:
+                text_len = clmn.width
+            text_len = max(text_len, header_font.measure(clmn.caption + u" ▼")+padding_len)
+
+            if clmn.max_val is None:
+                max_len = 0
+                for row in range(0, self.model.get_row_count()):
+                    max_len = max(max_len, len(self.model.get_value(col, row)))
+
+                for row in range(0, self.model.get_row_count()):
+                    text = self.model.get_value(col, row)
+                    if len(text)*2 > max_len:
+                        text_len = max(text_len, self.text_font.measure(text)+padding_len)
+            else:
+                text_len = max(text_len, self.text_font.measure(clmn.max_val)+padding_len)
+
             self.model.get_column(col).width = text_len
 
     ###############################################

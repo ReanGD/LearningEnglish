@@ -24,7 +24,7 @@ class ErrTableModel(Exception):
         return repr(self.value)
 
 class Column:
-    def __init__(self, caption, width = None, typedata = None, align = None):
+    def __init__(self, caption, width = None, typedata = None, align = None, max_val = None):
         if len(caption) == 0:
             raise ErrColumnList("Create a column with an empty caption")
         self.caption = caption
@@ -35,6 +35,7 @@ class Column:
         if align == None:
             align = 'center'
         self.align = align
+        self.max_val = max_val
 
 class ColumnList(object):
     def __init__(self):
@@ -49,8 +50,8 @@ class ColumnList(object):
     def count(self):
         return len(self.columns)
 
-    def add(self, caption, width = None, typedata = None, align = None):
-        self.columns.append(Column(caption, width, typedata, align))
+    def add(self, caption, width = None, typedata = None, align = None, max_val = None):
+        self.columns.append(Column(caption, width, typedata, align, max_val))
 
     def clear(self):
         self.columns         = []
@@ -129,8 +130,8 @@ class TableModel(object):
         self.data        = RowList()
         self.recalc_page(0)
 
-    def add_column(self, caption, width = None, typedata = None, align = None):
-        self.columns.add(caption, width, typedata, align)
+    def add_column(self, caption, width = None, typedata = None, align = None, max_val = None):
+        self.columns.add(caption, width, typedata, align, max_val)
         self.data.create(self.columns.count())
         self.recalc_page(self.currentpage)
 
