@@ -12,7 +12,7 @@ class Statistic:
 		self.last_lesson_result = None
 
 	def __repr__(self):
-		fmt = "Statistic(success_answer = {0}; error_answer={1}; last_lesson_date={2}; last_lesson_result={3})"
+		fmt = "Statistic(success_answer = {0}; error_answer = {1}; last_lesson_date = {2}; last_lesson_result = {3})"
 		return fmt.format(self.success_answer, self.error_answer, self.last_lesson_date, self.last_lesson_result)
 
 	def __eq__(self, other):
@@ -61,10 +61,10 @@ class Statistic:
 
 		return max(rating, 0.1)
 
-	def update(self, is_success, dt):
+	def update(self, is_success, dt, first):
 		self.last_lesson_date   = dt
 		self.last_lesson_result = is_success
-		if is_success:
+		if first or is_success:
 			self.success_answer += 1
 		else:
 			self.error_answer += 1
@@ -91,22 +91,24 @@ class StatisticTestCase(unittest.TestCase):
 
 	def test_get_total_answer(self):
 		self.assertEqual(self.stat.get_total_answer(), 0)
-		self.stat.update(True, "")
+		self.stat.update(True, "", False)
 		self.assertEqual(self.stat.get_total_answer(), 1)
-		self.stat.update(True, "")
+		self.stat.update(True, "", True)
 		self.assertEqual(self.stat.get_total_answer(), 2)
-		self.stat.update(False, "")
+		self.stat.update(False, "", True)
 		self.assertEqual(self.stat.get_total_answer(), 3)
 
 	def test_get_success_persent(self):
 		self.assertEqual(self.stat.get_success_persent(), 0.0)
-		self.stat.update(True, "")
+		self.stat.update(True, "", False)
 		self.assertEqual(self.stat.get_success_persent(), 100.0)
-		self.stat.update(False, "")
-		self.assertEqual(self.stat.get_success_persent(), 50.0)
-		self.stat.update(True, "")
-		self.stat.update(True, "")
+		self.stat.update(False, "", True)
+		self.assertEqual(self.stat.get_success_persent(), 100.0)
+		self.stat.update(False, "", False)
+		self.stat.update(True, "", False)
 		self.assertEqual(self.stat.get_success_persent(), 75.0)
+		self.stat.update(False, "", False)
+		self.assertEqual(self.stat.get_success_persent(), 60.0)
 
 	def test_calc_rating(self):
 		today = datetime.date.today()
@@ -115,24 +117,24 @@ class StatisticTestCase(unittest.TestCase):
 
 		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 201.000, 2)
 
-		self.stat.update(True, dt0)
+		self.stat.update(True, dt0, True)
 		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 84.847, 2)
 
-		self.stat.update(False, dt0)
+		self.stat.update(False, dt0, False)
 		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 183.869, 2)
 
-		self.stat.update(True, dt0)
+		self.stat.update(True, dt0, False)
 		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 92.676, 2)
 
-		self.stat.update(True, dt1)
+		self.stat.update(True, dt1, False)
 		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 94.396, 2)
 
 		for it in range(0, 7):
-			self.stat.update(True, dt1)
+			self.stat.update(True, dt1, False)
 		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 6.078, 2)
 
 		for it in range(0, 25):
-			self.stat.update(True, dt1)
+			self.stat.update(True, dt1, False)
 		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 0.131, 2)
 
 	def test_calc_rating_not_zero(self):
@@ -141,28 +143,28 @@ class StatisticTestCase(unittest.TestCase):
 		dt1   = (today - datetime.timedelta(1)).strftime("%Y.%m.%d")
 
 		for it in range(0, 10):
-			self.stat.update(True, dt1)
+			self.stat.update(True, dt1, False)
 		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 0.215, 2)
 
 		for it in range(0, 100):
-			self.stat.update(True, dt1)
+			self.stat.update(True, dt1, False)
 		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 0.1, 2)
 
 	def test_update(self):
 		dt = "01.02.2010"
-		self.stat.update(True, dt)
+		self.stat.update(False, dt, True)
 		self.assertEqual(self.stat.success_answer,        1)
 		self.assertEqual(self.stat.error_answer,          0)
 		self.assertEqual(self.stat.last_lesson_date,      dt)
-		self.assertEqual(self.stat.last_lesson_result,    True)
+		self.assertEqual(self.stat.last_lesson_result,    False)
 
-		self.stat.update(False, dt)
+		self.stat.update(False, dt, False)
 		self.assertEqual(self.stat.success_answer,        1)
 		self.assertEqual(self.stat.error_answer,          1)
 		self.assertEqual(self.stat.last_lesson_date,      dt)
 		self.assertEqual(self.stat.last_lesson_result,    False)
 
-		self.stat.update(False, dt)
+		self.stat.update(False, dt, False)
 		self.assertEqual(self.stat.success_answer,        1)
 		self.assertEqual(self.stat.error_answer,          2)
 		self.assertEqual(self.stat.last_lesson_date,      dt)

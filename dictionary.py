@@ -70,6 +70,7 @@ class Dict:
 		if len(studied_words) < cnt_study_words:
 			for wrd, stat in self.loaded_words(type_pr):
 				if stat.get_total_answer() == 0 and wrd not in (learned_words+studied_words):
+					wrd.set_first()
 					studied_words.append(wrd)
 					if len(studied_words) == cnt_study_words:
 						break

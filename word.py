@@ -27,6 +27,7 @@ class Word:
 		self.ru_word_list	= []
 		self.rating			= 0
 		self.stat 			= {en_to_ru_write : statistic.Statistic(), ru_to_en_write : statistic.Statistic()}
+		self.first          = False
 
 	@staticmethod
 	def convert_spec_chars(s):
@@ -59,6 +60,12 @@ class Word:
 	def get_rating(self):
 		return self.rating
 
+	def set_first(self):
+		self.first = True
+
+	def is_first(self):
+		return self.first
+
 	def source_data(self, type_pr):
 		if type_pr == en_to_ru_write:
 			return WordInfo(self.en_word, self.transcription)
@@ -82,7 +89,7 @@ class Word:
 			return is_success, WordInfo(self.en_word, self.transcription)
 
 	def update_stat(self, is_success, dt, type_pr):
-		self.stat[type_pr].update(is_success, dt)
+		self.stat[type_pr].update(is_success, dt, self.first)
 
 	def get_show_info(self):
 		return (self.en_word, self.transcription, self.ru_word)
@@ -272,17 +279,20 @@ class WordTestCase(unittest.TestCase):
 		self.assertEqual(self.word.is_load(), True)
 
 	def test_unpack(self):
-		statistic_in = {str(en_to_ru_write) : [1, 2, "01.02.2010", False], str(ru_to_en_write) : [2, 1, "02.03.2011", True]}
+		statistic_in = {str(en_to_ru_write) : [3, 2, "01.02.2010", False], str(ru_to_en_write) : [3, 1, "02.03.2011", False]}
 
 		st0 = statistic.Statistic()
-		st0.update(True, "01.02.2010")
-		st0.update(False, "01.02.2010")
-		st0.update(False, "01.02.2010")
+		st0.update(True, "01.02.2010", False)
+		st0.update(False, "01.02.2010", False)
+		st0.update(False, "01.02.2010", True)
+		st0.update(True, "01.02.2010", True)
+		st0.update(False, "01.02.2010", False)
 
 		st1 = statistic.Statistic()
-		st1.update(True, "02.03.2011")
-		st1.update(False, "02.03.2011")
-		st1.update(True, "02.03.2011")
+		st1.update(True, "02.03.2011", False)
+		st1.update(False, "02.03.2011", False)
+		st1.update(True, "02.03.2011", True)
+		st1.update(False, "02.03.2011", True)
 
 		self.word.unpack(statistic_in)
 		self.assertEqual(self.word.stat[en_to_ru_write], st0)
