@@ -14,22 +14,19 @@ clr_word_frame    = "#FFFFE0"
 clr_answer_frame  = "#E9F6FE"
 clr_success       = "#348000"
 clr_error         = "#FC0039"
-clr_black         = "#000000"
-clr_tbl_bg        = ["#E9F6FE", "#FFFFE0"]
 clr_stat          = ["#7B7B00", "#007B00", "#7B7B7B"]
 
 class StatisticDialog(Toplevel):
-	def __init__(self, parent, statistic):
-		# Toplevel.__init__(self, parent, bg=clr_tbl_bg[0]) #todo
-		Toplevel.__init__(self, parent) #todo
+	def __init__(self, parent, statistic, stat_count_row):
+		Toplevel.__init__(self, parent)
 		
 		self.withdraw()
-		self.body(statistic)
+		self.body(statistic, stat_count_row)
 		
 		self.transient(parent)
 		self.parent = parent
 		
-		width  = min(self.table_stat.get_totalWidth(), self.winfo_screenwidth())
+		width  = min(self.table_detailed_stat.get_totalWidth(), self.winfo_screenwidth())
 		height = min(750, self.winfo_screenheight())
 		x = (self.winfo_screenwidth() - width) / 2
 		y = (self.winfo_screenheight() - height) / 2
@@ -49,35 +46,30 @@ class StatisticDialog(Toplevel):
 		self.parent.focus_set()
 		self.destroy()
 
-	def body(self, statistic):
-		# Label(self, text="", bg=clr_tbl_bg[0]).grid(row=0, column=0, sticky=W+E, padx=0) #todo
-		Label(self, text="").grid(row=0, column=0, sticky=W+E, padx=0) #todo
-		self.btRuEn = Button(self, text=_("btn_ru_en"), command=self.show_ru_en)
-		self.btRuEn.grid(row=0, column=1, sticky=W+E, pady=5, padx=1)
-		self.btEnRu = Button(self, text=_("btn_en_ru"), command=self.show_en_ru)
-		self.btEnRu.grid(row=0, column=2, sticky=W+E, pady=5, padx=1)
-		self.btCmnStat = Button(self, text=_("btn_common_stat"), command=self.show_common_stat)
-		self.btCmnStat.grid(row=0, column=3, sticky=W+E, pady=5, padx=1)
+	def init_common_stat(self, statistic):
+		self.frame_common_stat = Frame(self)
+		self.frame_common_stat.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)
 
-		self.table_stat_cmn_frame = Frame(self)
-		self.table_stat_cmn_frame.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)
-
-		self.model_cmn = TableModel(200, False)
-		self.model_cmn.add_column(_("clm_name"),       typedata = 'text',    align='left')
-		self.model_cmn.add_column(_("clm_ru_en_cnt"),  typedata = 'number',  align='right', max_val=u"99999")
-		self.model_cmn.add_column(_("clm_en_ru_cnt"),  typedata = 'number',  align='right', max_val=u"99999")
-		self.model_cmn.add_column(_("clm_ru_en_pers"), typedata = 'percent', align='right', max_val=u"100.0 %")
-		self.model_cmn.add_column(_("clm_en_ru_pers"), typedata = 'percent', align='right', max_val=u"100.0 %")
+		model_common_stat = TableModel(10, False)
+		model_common_stat.add_column(_("clm_name"),       typedata = 'text',    align='left')
+		model_common_stat.add_column(_("clm_ru_en_cnt"),  typedata = 'number',  align='right', max_val=u"99999")
+		model_common_stat.add_column(_("clm_en_ru_cnt"),  typedata = 'number',  align='right', max_val=u"99999")
+		model_common_stat.add_column(_("clm_ru_en_pers"), typedata = 'percent', align='right', max_val=u"100.0 %")
+		model_common_stat.add_column(_("clm_en_ru_pers"), typedata = 'percent', align='right', max_val=u"100.0 %")
 
 		row_name = [[_("row_learned")], [_("row_study")], [_("row_learn")], [_("row_total")]]
 		for row in [row_name[i] + it for i, it in enumerate(statistic.get_common_stat())]:
-			self.model_cmn.add_row(row)
+			model_common_stat.add_row(row)
 
-		self.table_cmn_stat = TableCanvas(self.table_stat_cmn_frame, self.model_cmn, sort_enable = False)
-		self.table_cmn_stat.createTableFrame()
-		self.table_stat_cmn_frame.grid_forget()
+		self.table_common_stat = TableCanvas(self.frame_common_stat, model_common_stat, sort_enable = False)
+		self.table_common_stat.createTableFrame()
+		self.frame_common_stat.grid_forget()
 
-		self.model_ru_en = TableModel(200, True)
+	def init_detailed_stat(self, statistic, stat_count_row):
+		self.frame_detailed_stat = Frame(self)
+		self.frame_detailed_stat.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)		
+
+		self.model_ru_en = TableModel(stat_count_row, True)
 		self.model_ru_en.add_column(_("clm_word"),          typedata = 'text',    align='left')
 		self.model_ru_en.add_column(_("clm_transcription"), typedata = 'text',    align='left')
 		self.model_ru_en.add_column(_("clm_translate"),     typedata = 'text',    align='left')
@@ -88,15 +80,12 @@ class StatisticDialog(Toplevel):
 
 		for row in statistic.get_ru_en():
 			self.model_ru_en.add_row(row)
-		self.model_ru_en.sort(0, False)
+		self.model_ru_en.sort(6, False)
 
-		self.table_stat_frame = Frame(self)
-		self.table_stat_frame.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)		
+		self.table_detailed_stat = TableCanvas(self.frame_detailed_stat, self.model_ru_en, sort_enable = True, callback = self.draw_callback)
+		self.table_detailed_stat.createTableFrame()
 
-		self.table_stat = TableCanvas(self.table_stat_frame, self.model_ru_en, sort_enable = True, callback = self.draw_callback)
-		self.table_stat.createTableFrame()
-
-		self.model_en_ru = TableModel(200, True)
+		self.model_en_ru = TableModel(stat_count_row, True)
 		self.model_en_ru.add_column(_("clm_word"),          typedata = 'text',    align='left')
 		self.model_en_ru.add_column(_("clm_transcription"), typedata = 'text',    align='left')
 		self.model_en_ru.add_column(_("clm_translate"),     typedata = 'text',    align='left')
@@ -107,10 +96,23 @@ class StatisticDialog(Toplevel):
 
 		for row in statistic.get_en_ru():
 			self.model_en_ru.add_row(row)
-		self.model_en_ru.sort(0, False)
+		self.model_en_ru.sort(6, False)
 
 		for col in range(0, self.model_en_ru.get_column_count()):
-			self.model_en_ru.get_column(col).width = self.model_ru_en.get_column(col).width
+			self.model_en_ru.get_column(col).width = self.model_ru_en.get_column(col).width		
+
+	def body(self, statistic, stat_count_row):
+		self.last_button = 0
+		Label(self, text="").grid(row=0, column=0, sticky=W+E, padx=0)
+		self.btRuEn = Button(self, text=_("btn_ru_en"), command=self.show_ru_en)
+		self.btRuEn.grid(row=0, column=1, sticky=W+E, pady=5, padx=1)
+		self.btEnRu = Button(self, text=_("btn_en_ru"), command=self.show_en_ru)
+		self.btEnRu.grid(row=0, column=2, sticky=W+E, pady=5, padx=1)
+		self.btCmnStat = Button(self, text=_("btn_common_stat"), command=self.show_common_stat)
+		self.btCmnStat.grid(row=0, column=3, sticky=W+E, pady=5, padx=1)
+
+		self.init_common_stat(statistic)
+		self.init_detailed_stat(statistic, stat_count_row)
 
 		self.grid_rowconfigure(1, weight=1)
 		self.grid_columnconfigure(1, weight=1)
@@ -128,34 +130,36 @@ class StatisticDialog(Toplevel):
 			return celltxt, clr
 
 	def show_ru_en(self):
-		isReDraw = self.table_stat.getModel() != self.model_ru_en or self.btCmnStat["relief"] == "sunken"
 		self.btRuEn["relief"]    = "sunken"
 		self.btEnRu["relief"]    = "raised"
 		self.btCmnStat["relief"] = "raised"
-		if isReDraw:
-			self.table_stat.setModel(self.model_ru_en)
-			self.table_stat_cmn_frame.grid_forget()
-			self.table_stat_frame.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)
-		self.table_stat.do_bindings()
+		if self.last_button != 0:
+			self.table_detailed_stat.setModel(self.model_ru_en)
+			self.frame_common_stat.grid_forget()
+			self.frame_detailed_stat.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)
+		self.table_detailed_stat.do_bindings()
+		self.last_button = 0
 
 	def show_en_ru(self):
-		isReDraw = self.table_stat.getModel() != self.model_en_ru or self.btCmnStat["relief"] == "sunken"
 		self.btRuEn["relief"]    = "raised"
 		self.btEnRu["relief"]    = "sunken"
 		self.btCmnStat["relief"] = "raised"
-		if isReDraw:
-			self.table_stat.setModel(self.model_en_ru)
-			self.table_stat_cmn_frame.grid_forget()
-			self.table_stat_frame.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)
-		self.table_stat.do_bindings()
+		if self.last_button != 1:
+			self.table_detailed_stat.setModel(self.model_en_ru)
+			self.frame_common_stat.grid_forget()
+			self.frame_detailed_stat.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)
+		self.table_detailed_stat.do_bindings()
+		self.last_button = 1
 
 	def show_common_stat(self):
 		self.btRuEn["relief"]    = "raised"
 		self.btEnRu["relief"]    = "raised"
 		self.btCmnStat["relief"] = "sunken"
-		self.table_stat_frame.grid_forget()
-		self.table_stat_cmn_frame.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)
-		self.table_cmn_stat.do_bindings()
+		if self.last_button != 2:
+			self.frame_detailed_stat.grid_forget()
+			self.frame_common_stat.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)
+		self.table_common_stat.do_bindings()
+		self.last_button = 2
 
 class CloseDialog(tkSimpleDialog.Dialog):
 	def body(self, master):
@@ -278,8 +282,8 @@ class MainWindow(Tk):
 		elif dlg.result == 0:
 			self.end_lesson()
 
-	def show_statistic(self):
-		StatisticDialog(self, self.global_statistic())
+	def show_statistic(self):		
+		StatisticDialog(self, self.global_statistic(), self.cfg.get_dict()["stat_count_row"])
 
 	def set_word(self, new_word, is_new):
 		if is_new:

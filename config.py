@@ -25,6 +25,7 @@ class Config:
 		self.cfg_dict["MinSuccessCnt"]      = int(self.cfg_dict.get("MinSuccessCnt",10))
 		self.cfg_dict["retry_time"]         = int(self.cfg_dict.get("retry_time",1800))
 		self.cfg_dict["hide_transcription"] = self.cfg_dict.get("hide_transcription","no")
+		self.cfg_dict["stat_count_row"]     = int(self.cfg_dict.get("stat_count_row",200))
 		
 		return self.cfg_dict
 
@@ -45,8 +46,9 @@ class ConfigTestCase(unittest.TestCase):
 		self.assertEqual(cfg_dict["MinSuccessCnt"], 10)
 		self.assertEqual(cfg_dict["retry_time"], 1800)
 		self.assertEqual(cfg_dict["hide_transcription"], "no")
+		self.assertEqual(cfg_dict["stat_count_row"], 200)
 
-		self.assertEqual(len(cfg_dict), 8)
+		self.assertEqual(len(cfg_dict), 9)
 
 	def test_not_exists(self):
 		cfg = Config("fake_config.json")
@@ -60,8 +62,9 @@ class ConfigTestCase(unittest.TestCase):
 		self.assertEqual(cfg_dict["MinSuccessCnt"], 10)
 		self.assertEqual(cfg_dict["retry_time"], 1800)
 		self.assertEqual(cfg_dict["hide_transcription"], "no")
+		self.assertEqual(cfg_dict["stat_count_row"], 200)
 
-		self.assertEqual(len(cfg_dict), 8)
+		self.assertEqual(len(cfg_dict), 9)
 
 if __name__=="__main__":
 	suite = unittest.TestLoader().loadTestsFromTestCase(ConfigTestCase)

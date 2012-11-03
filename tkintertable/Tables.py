@@ -93,7 +93,9 @@ class TableCanvas(Canvas):
         self.multiplecollist=[]
         self.navFrame = None
         self.callback = callback
-        
+        self.pointer = [None, None, None]
+        self.clipped_tbl = []
+
         self.parentframe = parent
         self.width=width
         self.height=height
@@ -240,15 +242,15 @@ class TableCanvas(Canvas):
             return False
         return 0 <= col < self.model.get_column_count()
 
+    def get_row_clicked_by_coord(self, y):
+        return (y-self.y_start)/self.rowheight
+
     def get_row_clicked(self, event):
         """get row where event on canvas occurs"""
         y = int(self.canvasy(event.y))
-        y_start = self.y_start
-        return (y-y_start)/self.rowheight
+        return self.get_row_clicked_by_coord(y)
 
-    def get_col_clicked(self,event):
-        """get col where event on canvas occurs"""
-        x = int(self.canvasx(event.x))
+    def get_col_clicked_by_coord(self, x):
         for ind, colpos in enumerate(self.col_positions):
             try:
                 nextpos=self.col_positions[ind+1]
@@ -257,6 +259,11 @@ class TableCanvas(Canvas):
             if colpos < x <= nextpos:
                 return ind
         return None
+
+    def get_col_clicked(self,event):
+        """get col where event on canvas occurs"""
+        x = int(self.canvasx(event.x))
+        return self.get_col_clicked_by_coord(x)
 
     def get_totalWidth(self):
         return self.tablewidth + self.tablerowheader.x_start + int(self.Yscrollbar["width"]) + 8
@@ -337,25 +344,57 @@ class TableCanvas(Canvas):
         if self.callback != None:
             celltxt, clr = self.callback(row, col, celltxt, clr)
 
+        clipped_text = self.clipped.clipped_text(celltxt, u"", allow_w)
         self.create_text(x1, y1,
-                         text   = self.clipped.clipped_text(celltxt, u"", allow_w),
+                         text   = clipped_text,
                          fill   = clr,
                          font   = self.text_font,
                          anchor = anchor,
                          tag    = ('text','celltext'+str(col)+'_'+str(row)))
+        return clipped_text != celltxt
 
-    def draw_tooltip(self, row, col):
+    def draw_tooltip(self):
         """Draw a tooltip showing contents of cell"""
-        absrow = self.model.page_row_to_absolute_row(row)
-        text   = self.model.get_value(col,absrow)
+        self.pointer[2] = None
+        self.delete('tooltip')
+
+        x   = int(self.canvasx(self.winfo_pointerx() - self.winfo_rootx()))
+        y   = int(self.canvasy(self.winfo_pointery() - self.winfo_rooty()))
+        col = self.pointer[0]
+        row = self.pointer[1]
+
+        if self.get_row_clicked_by_coord(y) != row or self.get_col_clicked_by_coord(x) != col:
+            return
+        
+        row  = self.model.page_row_to_absolute_row(row)
+        text = self.model.get_value(col, row)
+        text, clr = self.callback(row, col, text, None)
+
         if text == '':
             return
 
-        x1,y1,x2,y2 = self.getCellCoords(row,col)
-        w=x2-x1
-        obj=self.create_text(x1+w/1.5, y2,
+        tooltip_width  = self.tooltip_font.measure(text) + 5
+        tooltip_height = self.tooltip_font.metrics("linespace") + 5
+        screen_x1 = self.canvasx(0)
+        screen_x2 = screen_x1 + self.winfo_width()
+        screen_y1 = self.canvasy(0)
+        screen_y2 = screen_y1 + self.winfo_height()
+
+        max_x = x + tooltip_width/2 + 5
+        if max_x >= screen_x2:
+            x -= (max_x - screen_x2)
+        min_x = x - tooltip_width/2 - 5
+        if min_x <= screen_x1:
+            x += (screen_x1 - min_x)
+
+        y = y + 25
+        max_y = y + tooltip_height
+        if max_y >= screen_y2:
+            y -= (max_y - screen_y2)
+
+        obj=self.create_text(x, y,
                                 text   = text,
-                                anchor = 'w',
+                                anchor = 'n',
                                 font   = self.tooltip_font,
                                 tag    = 'tooltip')
 
@@ -435,11 +474,12 @@ class TableCanvas(Canvas):
         self.set_colPositions()
 
         if self.model.get_pages_count() == 1:
-            try:
-                self.navFrame.destroy()
-                self.navFrame.forget()
-            except:
-                pass
+            if self.navFrame is not None:
+                try:
+                    self.navFrame.destroy()
+                    self.navFrame = None
+                except:
+                    pass
         else:
             self.drawNavFrame()
 
@@ -452,11 +492,15 @@ class TableCanvas(Canvas):
         self.tablerowheader.redraw()
 
         #now draw model data in cells
+        self.clipped_tbl = []
         for col in range(self.cols):
+            clipped_row = []
             align = self.model.get_column(col).align
             for rowpos, row in enumerate(self.model.get_page_rows()):
                 text = self.model.get_value(col, row)
-                self.draw_Text(rowpos, col, text, align)
+                is_clipped = self.draw_Text(rowpos, col, text, align)
+                clipped_row.append(is_clipped)
+            self.clipped_tbl.append(clipped_row)
 
         self.startrow = 0
         self.endrow   = 0
@@ -502,12 +546,19 @@ class TableCanvas(Canvas):
     def handle_motion(self, event):
         """Handle mouse motion on table"""
         self.tablecolheader.delete('resizesymbol')
-        self.delete('tooltip')
+
         rowclicked = self.get_row_clicked(event)
         colclicked = self.get_col_clicked(event)
-        if not (self.is_valid_page_row(rowclicked) and self.is_valid_col(colclicked)):
+        if self.pointer[0] == colclicked and self.pointer[1] == rowclicked:
             return
-        self.draw_tooltip(rowclicked, colclicked)
+
+        self.delete('tooltip')
+        if self.is_valid_page_row(rowclicked) and self.is_valid_col(colclicked) and self.clipped_tbl[colclicked][rowclicked]:
+            if self.pointer[2] is not None:
+                self.after_cancel(self.pointer[2])
+            self.pointer[0] = colclicked
+            self.pointer[1] = rowclicked
+            self.pointer[2] = self.after(500, self.draw_tooltip)
 
     def handle_left_click(self, event):
         """Respond to a single press"""        
@@ -651,6 +702,10 @@ class TableCanvas(Canvas):
 
     def drawNavFrame(self):
         """Draw the frame for selecting pages when paging is on"""
+        textPageCnt = 'Страница %i из %i' % (self.model.get_current_page()+1, self.model.get_pages_count())
+        if self.navFrame is not None:
+            self.labelPageCnt["text"] = textPageCnt
+            return
         import Table_images
         self.navFrame = Frame(self.parentframe)
         self.navFrame.grid(row=4, column=0, columnspan=2, sticky='news', padx=1, pady=1, ipady=1)
@@ -667,8 +722,8 @@ class TableCanvas(Canvas):
             b = Button(self.navFrame, text=i, command=pagingbuttons[i], relief=GROOVE, image=images[i])
             b.image = images[i]
             b.pack(side=LEFT, ipadx=1, ipady=1)
-        txt = 'Страница %i из %i' % (self.model.get_current_page()+1, self.model.get_pages_count())
-        Label(self.navFrame, text=txt, fg='white', bg='#3366CC',relief=SUNKEN).pack(side=LEFT,ipadx=2,ipady=2,padx=4)
+        self.labelPageCnt = Label(self.navFrame, text=textPageCnt, fg='white', bg='#3366CC',relief=SUNKEN)
+        self.labelPageCnt.pack(side=LEFT,ipadx=2,ipady=2,padx=4)
         txt = '%i записей' % self.rows
         Label(self.navFrame, text=txt).pack(side=LEFT,padx=3)
         txt = 'В одну страницу'
@@ -697,7 +752,7 @@ class TableCanvas(Canvas):
             if not tkMessageBox.askyesno("Warning", txt, parent=self.parentframe):
                 return
         self.model.set_paginal(False)
-        self.redrawTable()
+        self.after(50, self.redrawTable)
 
     ###############################################    
     # Navigation
