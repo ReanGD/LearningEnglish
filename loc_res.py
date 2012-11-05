@@ -12,6 +12,8 @@ _str_dict = {
 	,"of"                   : "из"
 	,"win_learning_english" : "Изучаем английский"
 	,"win_statistic_title"  : "Статистика ответов"
+	,"win_critical_error"   : u"Критическая ошибка"
+	,"err_dict_version"     : u"Версия файла со статистикой не верная. Установите последнюю версию программы. Продолжение работы не возможно."
 	,"btn_ru_en"            : "Ru->En"
 	,"btn_en_ru"            : "En->Ru"
 	,"btn_common_stat"      : "Общая статистика"

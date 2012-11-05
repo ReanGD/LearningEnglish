@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 
-import os,os.path
+import os
+import os.path
+import sys
 import GUI
 import lesson
 import config
+import dictionary
 
 class App(GUI.MainWindow):
 	def __init__(self):
@@ -15,13 +18,22 @@ class App(GUI.MainWindow):
 		self.mainloop()
 
 	def new_lesson(self):
-		self.lesson     = lesson.Lesson(self.cfg.reload())
-		self.practice   = None
+		try:
+			self.lesson = lesson.Lesson(self.cfg.reload())
+		except dictionary.ErrDict as err:
+			self.show_critical_error(err.loc_res_msg)
+			sys.exit(0)
+
+		self.practice = None
 		self.new_practice()
 		self.show()
 
 	def end_lesson(self):
-		self.lesson.end_lesson()
+		try:
+			self.lesson.end_lesson()
+		except dictionary.ErrDict as err:
+			self.show_critical_error(err.loc_res_msg)
+			sys.exit(0)
 		self.hide()
 		retry_time = self.cfg.get_dict()["retry_time"]*1000
 		self.after(retry_time, self.new_lesson)

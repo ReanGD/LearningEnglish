@@ -7,7 +7,7 @@ from loc_res import _
 from tkintertable.Tables import TableCanvas
 from tkintertable.TableModels import TableModel
 import tkSimpleDialog
-
+import tkMessageBox
 
 clr_stat_frame    = "#E9F6FE"
 clr_word_frame    = "#FFFFE0"
@@ -22,25 +22,30 @@ class StatisticDialog(Toplevel):
 		
 		self.withdraw()
 		self.body(statistic, stat_count_row)
-		
+		self.deiconify()
+
 		self.transient(parent)
 		self.parent = parent
-		
-		width  = min(self.table_detailed_stat.get_totalWidth(), self.winfo_screenwidth())
-		height = min(750, self.winfo_screenheight())
-		x = (self.winfo_screenwidth() - width) / 2
-		y = (self.winfo_screenheight() - height) / 2
 		self.title(_("win_statistic_title"))
 		self.resizable(True, True)
-		self.wm_geometry("%dx%d+%d+%d" % (width, height, x, y))
+		self.set_size()
 
-		self.deiconify()
 		self.wait_visibility() # window needs to be visible for the grab
 		self.grab_set()
 
-		self.focus_set()
 		self.protocol("WM_DELETE_WINDOW", self.on_destroy)
+		self.focus_set()
 		self.wait_window(self)
+
+	def set_size(self):
+		sc_width  = self.winfo_screenwidth()
+		sc_height = self.winfo_screenheight()
+		width     = min(self.table_detailed_stat.get_totalWidth(), sc_width)
+		height    = min(750, sc_height)
+		x = (sc_width - width) / 2
+		y = (sc_height - height) / 2
+		y = max(y - 20, 0)
+		self.wm_geometry("%dx%d+%d+%d" % (width, height, x, y))
 
 	def on_destroy(self, event=None):
 		self.parent.focus_set()
@@ -48,7 +53,7 @@ class StatisticDialog(Toplevel):
 
 	def init_common_stat(self, statistic):
 		self.frame_common_stat = Frame(self)
-		self.frame_common_stat.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)
+		self.frame_common_stat.grid(row=1, column=0, sticky=N+S+E+W)
 
 		model_common_stat = TableModel(10, False)
 		model_common_stat.add_column(_("clm_name"),       typedata = 'text',    align='left')
@@ -67,7 +72,7 @@ class StatisticDialog(Toplevel):
 
 	def init_detailed_stat(self, statistic, stat_count_row):
 		self.frame_detailed_stat = Frame(self)
-		self.frame_detailed_stat.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)		
+		self.frame_detailed_stat.grid(row=1, column=0, sticky=N+S+E+W)
 
 		self.model_ru_en = TableModel(stat_count_row, True)
 		self.model_ru_en.add_column(_("clm_word"),          typedata = 'text',    align='left')
@@ -101,24 +106,45 @@ class StatisticDialog(Toplevel):
 		for col in range(0, self.model_en_ru.get_column_count()):
 			self.model_en_ru.get_column(col).width = self.model_ru_en.get_column(col).width		
 
+
+	def button_add(self, text, command):
+		self.buttons.append(Button(self.frame_btn, text=text, command=command, borderwidth=2, default="normal"))
+		ind = len(self.buttons)
+		self.buttons[-1].grid(row=0, column=ind, sticky=N+S+E+W, pady=5, padx=3)
+
+	def button_sel(self, cur_button):
+		self.last_button = cur_button
+		for i, it in enumerate(self.buttons):
+			if i == cur_button:
+				it.configure(relief = "sunken")
+			else:
+				it.configure(relief = "raised")
+		self.update_idletasks()
+
 	def body(self, statistic, stat_count_row):
 		self.last_button = 0
-		Label(self, text="").grid(row=0, column=0, sticky=W+E, padx=0)
-		self.btRuEn = Button(self, text=_("btn_ru_en"), command=self.show_ru_en)
-		self.btRuEn.grid(row=0, column=1, sticky=W+E, pady=5, padx=1)
-		self.btEnRu = Button(self, text=_("btn_en_ru"), command=self.show_en_ru)
-		self.btEnRu.grid(row=0, column=2, sticky=W+E, pady=5, padx=1)
-		self.btCmnStat = Button(self, text=_("btn_common_stat"), command=self.show_common_stat)
-		self.btCmnStat.grid(row=0, column=3, sticky=W+E, pady=5, padx=1)
+		self.buttons = []
+
+		self.frame_btn = Frame(self, borderwidth = 2, relief = GROOVE)
+		self.frame_btn.grid(row = 0, column = 0, sticky = N+S+E+W)
+		Label(self.frame_btn, text = "").grid(row=0, column=0)
+		self.button_add(_("btn_ru_en"), self.show_ru_en)
+		self.button_add(_("btn_en_ru"), self.show_en_ru)
+		self.button_add(_("btn_common_stat"), self.show_common_stat)
+		Label(self.frame_btn, text = "").grid(row=0, column=4)
+
+		self.frame_btn.grid_rowconfigure(0, weight=1)
+		self.frame_btn.grid_columnconfigure(1, weight=1)
+		self.frame_btn.grid_columnconfigure(2, weight=1)
+		self.frame_btn.grid_columnconfigure(3, weight=1)
 
 		self.init_common_stat(statistic)
 		self.init_detailed_stat(statistic, stat_count_row)
 
 		self.grid_rowconfigure(1, weight=1)
-		self.grid_columnconfigure(1, weight=1)
-		self.grid_columnconfigure(2, weight=1)
-		self.grid_columnconfigure(3, weight=1)
+		self.grid_columnconfigure(0, weight=1)
 
+		self.button_sel(0)
 		self.show_ru_en()
 	
 	def draw_callback(self, row, col, celltxt, clr):
@@ -130,36 +156,27 @@ class StatisticDialog(Toplevel):
 			return celltxt, clr
 
 	def show_ru_en(self):
-		self.btRuEn["relief"]    = "sunken"
-		self.btEnRu["relief"]    = "raised"
-		self.btCmnStat["relief"] = "raised"
 		if self.last_button != 0:
+			self.button_sel(0)
 			self.table_detailed_stat.setModel(self.model_ru_en)
 			self.frame_common_stat.grid_forget()
-			self.frame_detailed_stat.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)
+			self.frame_detailed_stat.grid(row=1, column=0, sticky=N+S+E+W)
 		self.table_detailed_stat.do_bindings()
-		self.last_button = 0
 
 	def show_en_ru(self):
-		self.btRuEn["relief"]    = "raised"
-		self.btEnRu["relief"]    = "sunken"
-		self.btCmnStat["relief"] = "raised"
 		if self.last_button != 1:
+			self.button_sel(1)
 			self.table_detailed_stat.setModel(self.model_en_ru)
 			self.frame_common_stat.grid_forget()
-			self.frame_detailed_stat.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)
+			self.frame_detailed_stat.grid(row=1, column=0, sticky=N+S+E+W)
 		self.table_detailed_stat.do_bindings()
-		self.last_button = 1
 
 	def show_common_stat(self):
-		self.btRuEn["relief"]    = "raised"
-		self.btEnRu["relief"]    = "raised"
-		self.btCmnStat["relief"] = "sunken"
 		if self.last_button != 2:
+			self.button_sel(2)
 			self.frame_detailed_stat.grid_forget()
-			self.frame_common_stat.grid(row=1, column=0, columnspan=6, sticky=N+S+E+W)
+			self.frame_common_stat.grid(row=1, column=0, sticky=N+S+E+W)
 		self.table_common_stat.do_bindings()
-		self.last_button = 2
 
 class CloseDialog(tkSimpleDialog.Dialog):
 	def body(self, master):
@@ -284,6 +301,9 @@ class MainWindow(Tk):
 
 	def show_statistic(self):		
 		StatisticDialog(self, self.global_statistic(), self.cfg.get_dict()["stat_count_row"])
+
+	def show_critical_error(self, loc_res_msg):
+		tkMessageBox.showerror(_("win_critical_error"), _(loc_res_msg))
 
 	def set_word(self, new_word, is_new):
 		if is_new:

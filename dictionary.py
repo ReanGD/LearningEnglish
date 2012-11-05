@@ -6,6 +6,14 @@ import word
 import global_stat
 import unittest
 
+class ErrDict(Exception):
+    def __init__(self, value, loc_res_msg):
+        self.value = value
+        self.loc_res_msg = loc_res_msg
+
+    def __str__(self):
+        return repr(self.value)
+
 class Dict:
 	def __init__(self):
 		self.words = {}
@@ -29,6 +37,9 @@ class Dict:
 
 	def reload_stat_s(self, text):
 		stat_json = json.loads(text)
+		version   = stat_json["version"]
+		if version != 1:
+			raise ErrDict("Error dictionary version", "err_dict_version")
 		data      = stat_json["data"]
 		for it in data:
 			self.get_word_by_key(it).unpack(data[it])
@@ -108,9 +119,9 @@ class DictTestCase(unittest.TestCase):
 		json_dict = [self.create_word_data(i) for i in range(interval_from,interval_to)]
 		self.dict_obj.reload_dict_s(json.dumps(json_dict))
 
-	def load_stat(self, interval_from, interval_to):
+	def load_stat(self, interval_from, interval_to, version):
 		json_data = dict([self.create_word_stat(i) for i in range(interval_from,interval_to)])
-		json_stat = {"version" : 1, "data" : json_data}
+		json_stat = {"version" : version, "data" : json_data}
 		self.dict_obj.reload_stat_s(json.dumps(json_stat))
 
 	def assertLoad(self, num):
@@ -163,7 +174,7 @@ class DictTestCase(unittest.TestCase):
 		interval_from = 0
 		interval_to   = 5
 		self.load_dict(interval_from, interval_to)
-		self.load_stat(interval_from, interval_to)
+		self.load_stat(interval_from, interval_to, 1)
 
 		for i in range(interval_from, interval_to):
 			self.assertLoad(i)
@@ -172,7 +183,7 @@ class DictTestCase(unittest.TestCase):
 	def test_reload_stat_without_word(self):
 		interval_from = 0
 		interval_to   = 5
-		self.load_stat(interval_from, interval_to)
+		self.load_stat(interval_from, interval_to, 1)
 
 		for i in range(interval_from, interval_to):
 			self.assertLoadStat(i)
@@ -180,10 +191,10 @@ class DictTestCase(unittest.TestCase):
 	def test_reload_stat_double(self):
 		interval_from1 = 0
 		interval_to1   = 5
-		self.load_stat(interval_from1, interval_to1)
+		self.load_stat(interval_from1, interval_to1, 1)
 		interval_from2 = 3
 		interval_to2   = 8
-		self.load_stat(interval_from2, interval_to2)
+		self.load_stat(interval_from2, interval_to2, 1)
 
 		for i in range(interval_from1, interval_to2):
 			self.assertLoadStat(i)
@@ -194,13 +205,20 @@ class DictTestCase(unittest.TestCase):
 		self.load_dict(interval_from1, interval_to1)
 		interval_from2 = 3
 		interval_to2   = 9
-		self.load_stat(interval_from2, interval_to2)
+		self.load_stat(interval_from2, interval_to2, 1)
 
 		loaded_words = self.dict_obj.loaded_words(0)
 		self.assertEqual(len(loaded_words), len(range(interval_from1, interval_to1)))
 
 		for i,it in enumerate(loaded_words):
 			self.assertEqual(it[0].get_show_info()[0], "en"+str(i))
+
+	def test_load_error_dict_ver(self):
+		try:
+			self.load_stat(0, 1, 2)
+			self.fail("except not found")
+		except ErrDict:
+			pass
 
 if __name__=="__main__":
 	suite = unittest.TestLoader().loadTestsFromTestCase(DictTestCase)
