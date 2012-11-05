@@ -4,225 +4,179 @@ import math
 from tkFont import Font
 from Tkinter import *
 from loc_res import _
+from tkintertable.Tables import TableCanvas
+from tkintertable.TableModels import TableModel
 import tkSimpleDialog
+import tkMessageBox
 
 clr_stat_frame    = "#E9F6FE"
 clr_word_frame    = "#FFFFE0"
 clr_answer_frame  = "#E9F6FE"
 clr_success       = "#348000"
 clr_error         = "#FC0039"
-clr_black         = "#000000"
-clr_tbl_bg        = ["#E9F6FE", "#FFFFE0"]
 clr_stat          = ["#7B7B00", "#007B00", "#7B7B7B"]
 
-LEFT  = 0
-RIGHT = 1
-
-class AutoScrollbar(Scrollbar):
-	def set(self, lo, hi):
-		if float(lo) <= 0.0 and float(hi) >= 1.0:
-			self.tk.call("grid", "remove", self)
-		else:
-			self.grid()
-		Scrollbar.set(self, lo, hi)
-
-class ScrollCanvas(Canvas):
-	def __init__(self, parent):
-		delta_scr  = 1
-		delta_page = 10
-		
-		self.vscrollbar = AutoScrollbar(parent)
-		Canvas.__init__(self, parent, yscrollcommand=self.vscrollbar.set, bg=clr_tbl_bg[0], highlightthickness=0)
-		self.vscrollbar.config(command=self.yview)
-
-		parent.bind("<MouseWheel>", lambda event=None: self.move(-int(math.copysign(delta_scr, event.delta))))
-		parent.bind("<Button-4>",   lambda event=None: self.move(-delta_scr))
-		parent.bind("<Button-5>",   lambda event=None: self.move(delta_scr))
-		parent.bind("<Prior>",      lambda event=None: self.move(-delta_page))
-		parent.bind("<Next>",       lambda event=None: self.move(delta_page))
-		parent.bind("<Up>",         lambda event=None: self.move(-delta_scr))
-		parent.bind("<Down>",       lambda event=None: self.move(delta_scr))
-		parent.bind("<Home>",       lambda event=None: self.yview_moveto(0))
-		parent.bind("<End>",        lambda event=None: self.yview_moveto(1))
-
-	def move(self, delta):
-		self.yview_scroll(delta, "units")
-
-	def grid(self, row, column, columnspan):
-		self.vscrollbar.grid(row=row, column=column+columnspan-1, sticky=N+S)
-		Canvas.grid(self,row=row, column=column, columnspan=columnspan-1, sticky=N+S+E+W)
-
-	def clear(self):
-		self.delete(ALL)
-		self.yview_moveto(0)
-
-	def create_table(self, rc_left, rc_top, row_height, row_cnt, clms_width):
-		self.tbl_rc_top     = rc_top
-		self.tbl_row_height = row_height
-		self.tbl_column_pos = clms_width + [0]
-
-		sm = rc_left
-		for i, it in enumerate(self.tbl_column_pos):
-			self.tbl_column_pos[i], sm = sm, sm+it
-
-		rc_right  = self.tbl_column_pos[-1]
-		rc_bottom = rc_top + row_cnt*row_height
-		
-		self.clear()
-
-		self.create_line(rc_left, rc_top, rc_right, rc_top)
-		if row_cnt % 2 == 1:
-			self.create_line(rc_left, rc_bottom, rc_right+1, rc_bottom)
-		for i in range(1, row_cnt, 2):
-			sm = rc_top+row_height*i
-			self.create_rectangle(rc_left, sm, rc_right, sm+row_height, fill=clr_tbl_bg[1], outline=clr_black)
-
-		for i in self.tbl_column_pos:
-			self.create_line(i, rc_top, i, rc_bottom)
-
-	def fill_cell(self, column, row, text, clr, font, alignment):
-		if alignment not in (LEFT, RIGHT):
-			alignment = LEFT
-		if alignment == LEFT:
-			anchor  = W
-			clm_pos = self.tbl_column_pos[column] + 5
-		else:
-			anchor  = E
-			clm_pos = self.tbl_column_pos[column+1] - 5
-		row_pos = self.tbl_rc_top + (self.tbl_row_height+1)//2 + self.tbl_row_height*row
-		self.create_text(clm_pos, row_pos, text=text, anchor=anchor, font=font, fill=clr)
-
 class StatisticDialog(Toplevel):
-	def __init__(self, parent, statistic):
-		Toplevel.__init__(self, parent, bg=clr_tbl_bg[0])
+	def __init__(self, parent, statistic, stat_count_row):
+		Toplevel.__init__(self, parent)
 		
-		self.transient(parent)
-		self.parent    = parent
-		self.statistic = statistic
+		self.withdraw()
+		self.body(statistic, stat_count_row)
+		self.deiconify()
 
-		self.body()
+		self.transient(parent)
+		self.parent = parent
+		self.title(_("win_statistic_title"))
+		self.resizable(True, True)
+		self.set_size()
 
 		self.wait_visibility() # window needs to be visible for the grab
 		self.grab_set()
 
-		width  = min(1050, self.winfo_screenwidth())
-		height = min(750, self.winfo_screenheight())
-		x = (self.winfo_screenwidth() - width) / 2
-		y = (self.winfo_screenheight() - height) / 2
-		self.title(_("win_statistic_title"))
-		self.resizable(True, True)
-		self.wm_geometry("%dx%d+%d+%d" % (width, height, x, y))
-		self.focus_set()
 		self.protocol("WM_DELETE_WINDOW", self.on_destroy)
+		self.focus_set()
 		self.wait_window(self)
+
+	def set_size(self):
+		sc_width  = self.winfo_screenwidth()
+		sc_height = self.winfo_screenheight()
+		width     = min(self.table_detailed_stat.get_totalWidth(), sc_width)
+		height    = min(750, sc_height)
+		x = (sc_width - width) / 2
+		y = (sc_height - height) / 2
+		y = max(y - 20, 0)
+		self.wm_geometry("%dx%d+%d+%d" % (width, height, x, y))
 
 	def on_destroy(self, event=None):
 		self.parent.focus_set()
 		self.destroy()
 
-	def get_header_text(self):
-		return (_("clm_num"), _("clm_word"), _("clm_transcription"), _("clm_translate"), _("clm_cnt_suc"), _("clm_cnt_err"), _("clm_pers_suc"), _("clm_state"))
+	def init_common_stat(self, statistic):
+		self.frame_common_stat = Frame(self)
+		self.frame_common_stat.grid(row=1, column=0, sticky=N+S+E+W)
 
-	def body(self):
-		fnt = Font(family="Arial", size=-13) #10
-		self.tbl_fnt = fnt
-				
-		num_len       = max(fnt.measure(_("clm_num")), fnt.measure("9999"))
-		word_len      = max(fnt.measure(_("clm_word")), fnt.measure(_("clm_transcription")), fnt.measure(_("clm_translate")))
-		cnt_len       = max(fnt.measure("9999"), fnt.measure(_("clm_cnt_suc")), fnt.measure(_("clm_cnt_err")))
-		prs_len       = max(fnt.measure("100.0%"), fnt.measure(_("clm_pers_suc")))
-		state_len     = max(fnt.measure(_("st_learn")), fnt.measure(_("st_learned")), fnt.measure(_("st_study")), fnt.measure(_("clm_state")))
-		self.len_clmn = [num_len, word_len, word_len, word_len, cnt_len, cnt_len, prs_len, state_len]
+		model_common_stat = TableModel(10, False)
+		model_common_stat.add_column(_("clm_name"),       typedata = 'text',    align='left')
+		model_common_stat.add_column(_("clm_ru_en_cnt"),  typedata = 'number',  align='right', max_val=u"99999")
+		model_common_stat.add_column(_("clm_en_ru_cnt"),  typedata = 'number',  align='right', max_val=u"99999")
+		model_common_stat.add_column(_("clm_ru_en_pers"), typedata = 'percent', align='right', max_val=u"100.0 %")
+		model_common_stat.add_column(_("clm_en_ru_pers"), typedata = 'percent', align='right', max_val=u"100.0 %")
 
-		# Находим слова с большей длинной, чем умолчательная
-		for stat in self.statistic.get_ru_en():
-			for it in range(1, 4):
-				if len(stat[it]) > 10:
-					self.len_clmn[it] = max(self.len_clmn[it], fnt.measure(stat[it]))
+		row_name = [[_("row_learned")], [_("row_study")], [_("row_learn")], [_("row_total")]]
+		for row in [row_name[i] + it for i, it in enumerate(statistic.get_common_stat())]:
+			model_common_stat.add_row(row)
 
-		self.len_clmn = [i+20 for i in self.len_clmn]
+		self.table_common_stat = TableCanvas(self.frame_common_stat, model_common_stat, sort_enable = False)
+		self.table_common_stat.createTableFrame()
+		self.frame_common_stat.grid_forget()
 
-		Label(self, text="", bg=clr_tbl_bg[0]).grid(row=0, column=0, sticky=W+E, padx=2)
-		self.btRuEn = Button(self, text=_("btn_ru_en"), command=self.show_ru_en)
-		self.btRuEn.grid(row=0, column=1, sticky=W+E, pady=5, padx=1)
-		self.btEnRu = Button(self, text=_("btn_en_ru"), command=self.show_en_ru)
-		self.btEnRu.grid(row=0, column=2, sticky=W+E, pady=5, padx=1)
-		self.btCmnStat = Button(self, text=_("btn_common_stat"), command=self.show_common_stat)
-		self.btCmnStat.grid(row=0, column=3, sticky=W+E, pady=5, padx=1)
+	def init_detailed_stat(self, statistic, stat_count_row):
+		self.frame_detailed_stat = Frame(self)
+		self.frame_detailed_stat.grid(row=1, column=0, sticky=N+S+E+W)
 
-		self.canvas = ScrollCanvas(self)
-		self.canvas.grid(row=1, column=1, columnspan=5)
+		self.model_ru_en = TableModel(stat_count_row, True)
+		self.model_ru_en.add_column(_("clm_word"),          typedata = 'text',    align='left')
+		self.model_ru_en.add_column(_("clm_transcription"), typedata = 'text',    align='left')
+		self.model_ru_en.add_column(_("clm_translate"),     typedata = 'text',    align='left')
+		self.model_ru_en.add_column(_("clm_cnt_suc"),       typedata = 'number',  align='right', max_val=u"999")
+		self.model_ru_en.add_column(_("clm_cnt_err"),       typedata = 'number',  align='right', max_val=u"999")
+		self.model_ru_en.add_column(_("clm_pers_suc"),      typedata = 'percent', align='right', max_val=u"100.0 %")
+		self.model_ru_en.add_column(_("clm_state"),         typedata = 'text',    align='left', max_val=_("st_study")+u"  ")
+
+		for row in statistic.get_ru_en():
+			self.model_ru_en.add_row(row)
+		self.model_ru_en.sort(6, False)
+
+		self.table_detailed_stat = TableCanvas(self.frame_detailed_stat, self.model_ru_en, sort_enable = True, callback = self.draw_callback)
+		self.table_detailed_stat.createTableFrame()
+
+		self.model_en_ru = TableModel(stat_count_row, True)
+		self.model_en_ru.add_column(_("clm_word"),          typedata = 'text',    align='left')
+		self.model_en_ru.add_column(_("clm_transcription"), typedata = 'text',    align='left')
+		self.model_en_ru.add_column(_("clm_translate"),     typedata = 'text',    align='left')
+		self.model_en_ru.add_column(_("clm_cnt_suc"),       typedata = 'number',  align='right')
+		self.model_en_ru.add_column(_("clm_cnt_err"),       typedata = 'number',  align='right')
+		self.model_en_ru.add_column(_("clm_pers_suc"),      typedata = 'percent', align='right')
+		self.model_en_ru.add_column(_("clm_state"),         typedata = 'text',    align='left')
+
+		for row in statistic.get_en_ru():
+			self.model_en_ru.add_row(row)
+		self.model_en_ru.sort(6, False)
+
+		for col in range(0, self.model_en_ru.get_column_count()):
+			self.model_en_ru.get_column(col).width = self.model_ru_en.get_column(col).width		
+
+
+	def button_add(self, text, command):
+		self.buttons.append(Button(self.frame_btn, text=text, command=command, borderwidth=2, default="normal"))
+		ind = len(self.buttons)
+		self.buttons[-1].grid(row=0, column=ind, sticky=N+S+E+W, pady=5, padx=3)
+
+	def button_sel(self, cur_button):
+		self.last_button = cur_button
+		for i, it in enumerate(self.buttons):
+			if i == cur_button:
+				it.configure(relief = "sunken")
+			else:
+				it.configure(relief = "raised")
+		self.update_idletasks()
+
+	def body(self, statistic, stat_count_row):
+		self.last_button = 0
+		self.buttons = []
+
+		self.frame_btn = Frame(self, borderwidth = 2, relief = GROOVE)
+		self.frame_btn.grid(row = 0, column = 0, sticky = N+S+E+W)
+		Label(self.frame_btn, text = "").grid(row=0, column=0)
+		self.button_add(_("btn_ru_en"), self.show_ru_en)
+		self.button_add(_("btn_en_ru"), self.show_en_ru)
+		self.button_add(_("btn_common_stat"), self.show_common_stat)
+		Label(self.frame_btn, text = "").grid(row=0, column=4)
+
+		self.frame_btn.grid_rowconfigure(0, weight=1)
+		self.frame_btn.grid_columnconfigure(1, weight=1)
+		self.frame_btn.grid_columnconfigure(2, weight=1)
+		self.frame_btn.grid_columnconfigure(3, weight=1)
+
+		self.init_common_stat(statistic)
+		self.init_detailed_stat(statistic, stat_count_row)
 
 		self.grid_rowconfigure(1, weight=1)
-		self.grid_columnconfigure(1, weight=1)
-		self.grid_columnconfigure(2, weight=1)
-		self.grid_columnconfigure(3, weight=1)
+		self.grid_columnconfigure(0, weight=1)
 
+		self.button_sel(0)
 		self.show_ru_en()
-
-		self.canvas.config(scrollregion=self.canvas.bbox("all"))
-
-	def draw_stat(self, stat_table):
-		rc_left   = 0
-		rc_top    = 1
-		row_height = self.tbl_fnt.metrics("linespace")+1
-		self.canvas.create_table(rc_left, rc_top, row_height, len(stat_table)+1, self.len_clmn)
-
-		state_str  = (_("st_learned"), _("st_study"), _("st_learn"))
-		for i, row in enumerate([self.get_header_text()]+stat_table):
-			for j, text in enumerate(row):
-				if i > 0 and j in (0, 4, 5, 6):
-					alignment = RIGHT
-				else:
-					alignment = LEFT
-
-				if i > 0 and j == 7:
-					txt, clr = state_str[text], clr_stat[text]
-				else:
-					txt, clr = text, clr_black
-				self.canvas.fill_cell(j, i, txt, clr, self.tbl_fnt, alignment)
-
-	def draw_common_stat(self):
-		row_name = [[_("row_learned")], [_("row_study")], [_("row_learn")], [_("row_total")]]
-		table = [row_name[i] + it for i, it in enumerate(self.statistic.get_common_stat())]
-		table = [["", _("clm_ru_en_cnt"), _("clm_en_ru_cnt"), _("clm_ru_en_pers"), _("clm_en_ru_pers")]] + table
-
-		len_clmn = [0, 0, 0, 0, 0]
-		for row in table:
-			for i, text in enumerate(row):
-				len_clmn[i] = max(len_clmn[i], self.tbl_fnt.measure(text))
-		len_clmn = [i+20 for i in len_clmn]
-
-		rc_left    = 0
-		rc_top     = 1
-		row_height = self.tbl_fnt.metrics("linespace")+1
-		self.canvas.create_table(rc_left, rc_top, row_height, 5, len_clmn)
-
-		for i, row in enumerate(table):
-			for j, text in enumerate(row):
-				if i > 0 and j > 0:
-					alignment = RIGHT
-				else:
-					alignment = LEFT
-				self.canvas.fill_cell(j, i, text, clr_black, self.tbl_fnt, alignment)
+	
+	def draw_callback(self, row, col, celltxt, clr):
+		if col == 6:
+			words = [_("st_learned"), _("st_study"), _("st_learn")]
+			ind = int(celltxt)
+			return words[ind], clr_stat[ind]
+		else:
+			return celltxt, clr
 
 	def show_ru_en(self):
-		self.btRuEn["relief"]    = "sunken"
-		self.btEnRu["relief"]    = "raised"
-		self.btCmnStat["relief"] = "raised"
-		self.draw_stat(self.statistic.get_ru_en())
+		if self.last_button != 0:
+			self.button_sel(0)
+			self.table_detailed_stat.setModel(self.model_ru_en)
+			self.frame_common_stat.grid_forget()
+			self.frame_detailed_stat.grid(row=1, column=0, sticky=N+S+E+W)
+		self.table_detailed_stat.do_bindings()
 
 	def show_en_ru(self):
-		self.btRuEn["relief"]    = "raised"
-		self.btEnRu["relief"]    = "sunken"
-		self.btCmnStat["relief"] = "raised"
-		self.draw_stat(self.statistic.get_en_ru())
+		if self.last_button != 1:
+			self.button_sel(1)
+			self.table_detailed_stat.setModel(self.model_en_ru)
+			self.frame_common_stat.grid_forget()
+			self.frame_detailed_stat.grid(row=1, column=0, sticky=N+S+E+W)
+		self.table_detailed_stat.do_bindings()
 
 	def show_common_stat(self):
-		self.btRuEn["relief"]    = "raised"
-		self.btEnRu["relief"]    = "raised"
-		self.btCmnStat["relief"] = "sunken"
-		self.draw_common_stat()
+		if self.last_button != 2:
+			self.button_sel(2)
+			self.frame_detailed_stat.grid_forget()
+			self.frame_common_stat.grid(row=1, column=0, sticky=N+S+E+W)
+		self.table_common_stat.do_bindings()
 
 class CloseDialog(tkSimpleDialog.Dialog):
 	def body(self, master):
@@ -354,8 +308,11 @@ class MainWindow(Tk):
 		elif dlg.result == 0:
 			self.end_lesson()
 
-	def show_statistic(self):
-		StatisticDialog(self, self.global_statistic())
+	def show_statistic(self):		
+		StatisticDialog(self, self.global_statistic(), self.cfg.get_dict()["stat_count_row"])
+
+	def show_critical_error(self, loc_res_msg):
+		tkMessageBox.showerror(_("win_critical_error"), _(loc_res_msg))
 
 	def set_word(self, new_word, is_new):
 		if is_new:
