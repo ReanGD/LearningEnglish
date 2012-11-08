@@ -4,6 +4,7 @@ import math
 import datetime
 import unittest
 
+
 class Statistic:
 	def __init__(self):
 		self.success_answer     = 0
@@ -16,13 +17,13 @@ class Statistic:
 		return fmt.format(self.success_answer, self.error_answer, self.last_lesson_date, self.last_lesson_result)
 
 	def __eq__(self, other):
-		return	self.success_answer == other.success_answer and \
+		return self.success_answer == other.success_answer and \
 				self.error_answer == other.error_answer and \
 				self.last_lesson_date == other.last_lesson_date and \
 				self.last_lesson_result == other.last_lesson_result
 
 	def get_total_answer(self):
-		return self.success_answer+self.error_answer
+		return self.success_answer + self.error_answer
 
 	def get_success_answer(self):
 		return self.success_answer
@@ -30,26 +31,26 @@ class Statistic:
 	def get_success_persent(self):
 		total = self.get_total_answer()
 		if total > 0:
-			return float(self.success_answer)/total*100.0
+			return float(self.success_answer) / total * 100.0
 		else:
 			return 0.0
 
 	def calc_rating(self, min_percent, min_success_cnt):
 		pers  = self.get_success_persent()
 		total = self.get_total_answer()
-		
+
 		# Базовый рейтинг от 1 до 101
 		rating = 101.0 - pers
 		# пока не достигли необходимого числа правильных ответов, рейтинг выше
 		rest_sa = (min_success_cnt - self.success_answer)
 		if rest_sa < 0:
 			rest_sa = 0
-		rating += float(rest_sa)/min_success_cnt*100.0
+		rating += float(rest_sa) / min_success_cnt * 100.0
 		# для изученных слов уменьшаем рейтинг
 		if pers >= min_percent and total >= min_success_cnt:
 			rating /= 3.0
 		# чем чаще слово повторяли, тем меньше рейтинг
-		rating *= math.exp(-total*0.07)
+		rating *= math.exp(-total * 0.07)
 		# если последний ответ был неправильным увеличиваем рейтинг
 		if self.last_lesson_result == False:
 			rating *= 1.5
@@ -57,7 +58,7 @@ class Statistic:
 		days = 0
 		if self.last_lesson_date != None:
 			days = (datetime.date.today() - datetime.datetime.strptime(self.last_lesson_date, "%Y.%m.%d").date()).days
-		rating *= math.log10(days+1.0)+1.0
+		rating *= math.log10(days + 1.0) + 1.0
 
 		return max(rating, 0.1)
 
@@ -73,7 +74,8 @@ class Statistic:
 		return [self.success_answer, self.error_answer, self.last_lesson_date, self.last_lesson_result]
 
 	def unpack(self, statistic):
-		self.success_answer, self.error_answer, self.last_lesson_date, self.last_lesson_result = statistic	
+		self.success_answer, self.error_answer, self.last_lesson_date, self.last_lesson_result = statistic
+
 
 class StatisticTestCase(unittest.TestCase):
 	def setUp(self):
@@ -139,7 +141,6 @@ class StatisticTestCase(unittest.TestCase):
 
 	def test_calc_rating_not_zero(self):
 		today = datetime.date.today()
-		dt0   = today.strftime("%Y.%m.%d")
 		dt1   = (today - datetime.timedelta(1)).strftime("%Y.%m.%d")
 
 		for it in range(0, 10):
@@ -176,6 +177,6 @@ class StatisticTestCase(unittest.TestCase):
 		self.stat.unpack(statistic)
 		self.assertEqual(self.stat.pack(), list(statistic))
 
-if __name__=="__main__":
+if __name__ == "__main__":
 	suite = unittest.TestLoader().loadTestsFromTestCase(StatisticTestCase)
 	unittest.TextTestRunner(verbosity=2).run(suite)

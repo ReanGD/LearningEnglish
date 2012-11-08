@@ -2,12 +2,14 @@
 
 import math
 
+
 class ErrColumnList(Exception):
     def __init__(self, value):
         self.value = value
 
     def __str__(self):
         return repr(self.value)
+
 
 class ErrRowList(Exception):
     def __init__(self, value):
@@ -16,6 +18,7 @@ class ErrRowList(Exception):
     def __str__(self):
         return repr(self.value)
 
+
 class ErrTableModel(Exception):
     def __init__(self, value):
         self.value = value
@@ -23,8 +26,9 @@ class ErrTableModel(Exception):
     def __str__(self):
         return repr(self.value)
 
+
 class Column:
-    def __init__(self, caption, width = None, typedata = None, align = None, max_val = None):
+    def __init__(self, caption, width=None, typedata=None, align=None, max_val=None):
         if len(caption) == 0:
             raise ErrColumnList("Create a column with an empty caption")
         self.caption = caption
@@ -36,6 +40,7 @@ class Column:
             align = 'center'
         self.align = align
         self.max_val = max_val
+
 
 class ColumnList(object):
     def __init__(self):
@@ -50,7 +55,7 @@ class ColumnList(object):
     def count(self):
         return len(self.columns)
 
-    def add(self, caption, width = None, typedata = None, align = None, max_val = None):
+    def add(self, caption, width=None, typedata=None, align=None, max_val=None):
         self.columns.append(Column(caption, width, typedata, align, max_val))
 
     def clear(self):
@@ -70,6 +75,7 @@ class ColumnList(object):
             raise ErrColumnList(msg)
         self.sort_index      = col
         self.sort_is_reverse = is_reverse
+
 
 class RowList(object):
     def __init__(self):
@@ -118,8 +124,9 @@ class RowList(object):
                 return cmp(left[0].strip().lower(), right[0].strip().lower())
         self.rows = sorted(self.rows, cmp=comparer)
 
+
 class TableModel(object):
-    def __init__(self, rowsperpage = 100, paginal = True):
+    def __init__(self, rowsperpage=100, paginal=True):
         if rowsperpage <= 0:
             rowsperpage = 100
         self.rowsperpage = rowsperpage
@@ -130,7 +137,7 @@ class TableModel(object):
         self.data        = RowList()
         self.recalc_page(0)
 
-    def add_column(self, caption, width = None, typedata = None, align = None, max_val = None):
+    def add_column(self, caption, width=None, typedata=None, align=None, max_val=None):
         self.columns.add(caption, width, typedata, align, max_val)
         self.data.create(self.columns.count())
         self.recalc_page(self.currentpage)
@@ -146,8 +153,8 @@ class TableModel(object):
     def recalc_page(self, col):
         self.currentpage = col
         if self.paginal:
-            lower = self.currentpage*self.rowsperpage
-            upper = min(lower+self.rowsperpage, self.get_row_count())
+            lower = self.currentpage * self.rowsperpage
+            upper = min(lower + self.rowsperpage, self.get_row_count())
             self.rowrange = range(lower, upper)
         else:
             self.rowrange = range(0, self.get_row_count())
@@ -159,8 +166,8 @@ class TableModel(object):
         return False
 
     def goto_last_page(self):
-        if self.currentpage != self.get_pages_count()-1:
-            self.recalc_page(self.get_pages_count()-1)
+        if self.currentpage != self.get_pages_count() - 1:
+            self.recalc_page(self.get_pages_count() - 1)
             return True
         return False
 
@@ -171,7 +178,7 @@ class TableModel(object):
         return False
 
     def goto_next_page(self):
-        if self.currentpage < self.get_pages_count()-1:
+        if self.currentpage < self.get_pages_count() - 1:
             self.recalc_page(self.currentpage + 1)
             return True
         return False
@@ -187,7 +194,7 @@ class TableModel(object):
 
     def get_pages_count(self):
         if self.paginal:
-            return math.trunc(math.ceil(float(self.data.count_row())/self.rowsperpage))
+            return math.trunc(math.ceil(float(self.data.count_row()) / self.rowsperpage))
         else:
             return 1
 
@@ -195,7 +202,7 @@ class TableModel(object):
         return self.currentpage
 
     def page_row_to_absolute_row(self, row):
-        return row+self.currentpage*self.rowsperpage
+        return row + self.currentpage * self.rowsperpage
 
     def get_column(self, col):
         return self.columns.get(col)

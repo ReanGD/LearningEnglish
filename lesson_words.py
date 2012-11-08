@@ -3,10 +3,11 @@
 import random
 import unittest
 
+
 class LessonWords:
-	"""Назначение класса:
-	   выдача слов из набора по рейтингу (чем выше рейтинг, тем выше шанс, что класс вернет это слово)
-	   слова в выдаче должны повторяться минимальное кол-во раз
+	""" Назначение класса:
+		выдача слов из набора по рейтингу (чем выше рейтинг, тем выше шанс, что класс вернет это слово)
+		слова в выдаче должны повторяться минимальное кол-во раз
 	"""
 
 	def __init__(self, words):
@@ -31,10 +32,11 @@ class LessonWords:
 				if it_cnt > 1000:
 					self.remaining_words.remove(wrd)
 					break
-				if wrd.get_rating() > random.random()*max_rating:
+				if wrd.get_rating() > random.random() * max_rating:
 					self.remaining_words.remove(wrd)
 					break
 		return wrd
+
 
 class WordMock:
 	def __init__(self, rating):
@@ -43,6 +45,7 @@ class WordMock:
 	def get_rating(self):
 		return self.rating
 
+
 class LessonWordsTestCase(unittest.TestCase):
 	def get_any_word(self, wrd):
 		self.assertTrue(wrd in self.words)
@@ -50,7 +53,7 @@ class LessonWordsTestCase(unittest.TestCase):
 		self.used_words.append(wrd)
 
 	def test_get_any_word(self):
-		self.words = [WordMock(1),WordMock(2),WordMock(3)]
+		self.words = [WordMock(1), WordMock(2), WordMock(3)]
 		self.used_words = []
 		lw = LessonWords(self.words)
 
@@ -62,6 +65,6 @@ class LessonWordsTestCase(unittest.TestCase):
 		self.get_any_word(lw.get_any_word())
 		self.get_any_word(lw.get_any_word())
 
-if __name__=="__main__":
+if __name__ == "__main__":
 	suite = unittest.TestLoader().loadTestsFromTestCase(LessonWordsTestCase)
 	unittest.TextTestRunner(verbosity=2).run(suite)

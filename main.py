@@ -8,6 +8,7 @@ import lesson
 import config
 import dictionary
 
+
 class App(GUI.MainWindow):
 	def __init__(self):
 		GUI.MainWindow.__init__(self)
@@ -35,7 +36,7 @@ class App(GUI.MainWindow):
 			self.show_critical_error(err.loc_res_msg)
 			sys.exit(0)
 		self.hide()
-		retry_time = self.cfg.get_dict()["retry_time"]*1000
+		retry_time = self.cfg.get_dict()["retry_time"] * 1000
 		self.after(retry_time, self.new_lesson)
 
 	def new_practice(self):
@@ -58,11 +59,12 @@ class App(GUI.MainWindow):
 		min_success_cnt = self.cfg.get_dict()["MinSuccessCnt"]
 		return self.lesson.get_dict().global_statistic(min_percent, min_success_cnt)
 
+
 def run():
 	import singleton
-	me = singleton.SingleInstance()
+	singleton.SingleInstance()
 	os.chdir(os.path.dirname(os.path.abspath(__file__)))
 	App()
 
-if __name__=="__main__":
+if __name__ == "__main__":
 	run()

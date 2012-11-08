@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+
 class GlobalStatistic:
 	def __init__(self, min_percent, min_success_cnt):
 		self.stat_en_ru = []
@@ -38,9 +39,9 @@ class GlobalStatistic:
 		total_en_ru = len(self.stat_en_ru)
 		for i in range(0, 3):
 			cnt_ru_en  = sum(1 for j in self.stat_ru_en if j[6] == unicode(i))
-			pers_ru_en = round(float(cnt_ru_en)*100.0/float(total_ru_en), 2)
+			pers_ru_en = round(float(cnt_ru_en) * 100.0 / float(total_ru_en), 2)
 			cnt_en_ru  = sum(1 for j in self.stat_en_ru if j[6] == unicode(i))
-			pers_en_ru = round(float(cnt_en_ru)*100.0/float(total_en_ru), 2)
+			pers_en_ru = round(float(cnt_en_ru) * 100.0 / float(total_en_ru), 2)
 			table.append([unicode(cnt_ru_en), unicode(cnt_en_ru), unicode(pers_ru_en), unicode(pers_en_ru)])
 		table.append([unicode(total_ru_en), unicode(total_en_ru), u"100.0", u"100.0"])
 		return table

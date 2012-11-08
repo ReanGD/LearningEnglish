@@ -6,6 +6,7 @@ import word
 import dictionary
 import lesson_words
 
+
 class Practice:
 	def __init__(self, lesson, word, type_pr):
 		self.lesson    = lesson
@@ -32,6 +33,7 @@ class Practice:
 			self.lesson.update_stat(is_success)
 		return is_success, right_answer
 
+
 class Lesson:
 	def __init__(self, cfg):
 		random.seed()
@@ -54,7 +56,7 @@ class Lesson:
 		if is_success:
 			self.cnt_success += 1
 		else:
-			self.cnt_error += 1		
+			self.cnt_error += 1
 
 	def end_lesson(self):
 		self.dict.reload_stat(self.path_to_stat)
