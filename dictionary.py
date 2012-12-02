@@ -17,8 +17,9 @@ class ErrDict(Exception):
 
 
 class Dict:
-	def __init__(self):
+	def __init__(self, cfg):
 		self.words = {}
+		self.cfg   = cfg
 
 	def get_word_by_key(self, en):
 		w = self.words.get(en)
@@ -41,7 +42,7 @@ class Dict:
 		stat_json = json.loads(text)
 		version   = stat_json["version"]
 		if version != 1:
-			raise ErrDict("Error dictionary version", "err_dict_version")
+			raise ErrDict("Error stat file version", "err_stat_version")
 		data      = stat_json["data"]
 		for it in data:
 			self.get_word_by_key(it).unpack(data[it])
@@ -59,6 +60,57 @@ class Dict:
 			if it.is_load():
 				stat.add_word(it, it.get_stat(word.en_to_ru_write), it.get_stat(word.ru_to_en_write))
 		return stat
+
+	def _rename_check(self, old_en, new_en, new_ru):
+		if len(new_en) == 0:
+			raise ErrDict("Error word is empty", "err_en_word_empty")
+
+		if len(new_ru) == 0:
+			raise ErrDict("Error word is empty", "err_ru_word_empty")
+
+		if old_en not in self.words.keys():
+			raise ErrDict("Error find word", "err_find_en_word")
+
+		new_en = new_en.lower()
+		if old_en.strip().lower() != new_en:
+			if new_en in map(lambda x: x.strip().lower(), self.words.keys()):
+				raise ErrDict("Dublicate in load dict", "err_dublicate_en_word")
+
+	def _rename_in_json_dict(self, old_en, new_en, new_tr, new_ru, json_dict):
+		is_find = False
+		old_en = old_en.strip().lower()
+		lower_en = new_en.lower()
+		for it in json_dict:
+			en = it[0].strip().lower()
+			if en == old_en:
+				it[0], it[1], it[2] = new_en, new_tr, new_ru
+				is_find = True
+			elif en == lower_en:
+				raise ErrDict("Dublicate in file dict", "err_dublicate_en_word")
+		if not is_find:
+			json_dict.append([new_en, new_tr, new_ru])
+		return json_dict
+
+	def _rename_in_dict(self, old_en, new_en, new_tr, new_ru):
+		w = self.words.pop(old_en)
+		w.rename(new_en, new_tr, new_ru)
+		self.words[new_en] = w
+
+	def rename_word(self, old_en, new_en, new_tr, new_ru):
+		new_en = new_en.strip()
+		new_tr = new_tr.strip()
+		new_ru = new_ru.strip()
+		self._rename_check(old_en, new_en, new_ru)
+
+		cfg_dict = self.cfg.reload()
+
+		import codecs
+		json_dict = json.load(codecs.open(cfg_dict["path_to_dict"], "rt", "utf-8"))
+		json_dict = self._rename_in_json_dict(old_en, new_en, new_tr, new_ru, json_dict)
+		self.reload_stat(cfg_dict["path_to_stat"])
+		self._rename_in_dict(old_en, new_en, new_tr, new_ru)
+		json.dump(json_dict, codecs.open(cfg_dict["path_to_dict"], "wt", "utf-8"), indent=2, ensure_ascii=False)
+		self.save_stat(cfg_dict["path_to_stat"])
 
 	def words_for_lesson(self, cnt_study_words, min_percent, min_success_cnt, type_pr):
 		learned_words = []
@@ -107,7 +159,7 @@ class Dict:
 
 class DictTestCase(unittest.TestCase):
 	def setUp(self):
-		self.dict_obj = Dict()
+		self.dict_obj = Dict(None)
 
 	def create_word_data(self, num):
 		return ["en" + str(num), "tr" + str(num), "ru" + str(num)]
@@ -119,9 +171,12 @@ class DictTestCase(unittest.TestCase):
 		stat2 = [num * 20, num * 30, date + str(num + 1), num % 2 == 1]
 		return [key, {"0": stat1, "1": stat2}]
 
+	def json_dict(self, interval_from, interval_to):
+		return [self.create_word_data(i) for i in range(interval_from, interval_to)]
+
 	def load_dict(self, interval_from, interval_to):
-		json_dict = [self.create_word_data(i) for i in range(interval_from, interval_to)]
-		self.dict_obj.reload_dict_s(json.dumps(json_dict))
+		txt_dict = json.dumps(self.json_dict(interval_from, interval_to))
+		self.dict_obj.reload_dict_s(txt_dict)
 
 	def load_stat(self, interval_from, interval_to, version):
 		json_data = dict([self.create_word_stat(i) for i in range(interval_from, interval_to)])
@@ -223,6 +278,85 @@ class DictTestCase(unittest.TestCase):
 			self.fail("except not found")
 		except ErrDict:
 			pass
+
+	def test_rename_check(self):
+		"Тест на то, что корректно проходит проверка перед переименованием"
+
+		self.load_dict(0, 2)
+
+		try:
+			# пустое новое английское слово
+			self.dict_obj._rename_check("en0", "", "new_ru")
+			self.fail("except not found")
+		except ErrDict:
+			pass
+
+		try:
+			# пустое новое русское слово
+			self.dict_obj._rename_check("en0", "new_en", "")
+			self.fail("except not found")
+		except ErrDict:
+			pass
+
+		try:
+			# старое слово не в списке ключей
+			self.dict_obj._rename_check("en10", "new_en", "new_ru")
+			self.fail("except not found")
+		except ErrDict:
+			pass
+
+		try:
+			# новое слово имеет дубликаты
+			self.dict_obj._rename_check("en0", "EN1", "new_ru")
+			self.fail("except not found")
+		except ErrDict:
+			pass
+
+		# Корректное переименование
+		self.dict_obj._rename_check("en0", "en0", "new_ru")
+		self.dict_obj._rename_check("en0", "new_en", "new_ru")
+
+	def test_rename_in_json_dict(self):
+		"Проверим корректность переименования в словаре, который загрузили из файла"
+		j_dict = self.json_dict(0, 2)
+
+		import copy
+
+		# Старое слово не в базе
+		new_dict = self.dict_obj._rename_in_json_dict("en10", "new_en", "new_tr", "new_ru", copy.deepcopy(j_dict))
+		self.assertEqual(new_dict, [["en0", "tr0", "ru0"], ["en1", "tr1", "ru1"], ["new_en", "new_tr", "new_ru"]])
+
+		# Старое слово в базе
+		new_dict = self.dict_obj._rename_in_json_dict("  en0 ", "new_en", "new_tr", "new_ru", copy.deepcopy(j_dict))
+		self.assertEqual(new_dict, [["new_en", "new_tr", "new_ru"], ["en1", "tr1", "ru1"]])
+
+		# Старое слово в базе
+		new_dict = self.dict_obj._rename_in_json_dict(" En1 ", "new_en", "new_tr", "new_ru", copy.deepcopy(j_dict))
+		self.assertEqual(new_dict, [["en0", "tr0", "ru0"], ["new_en", "new_tr", "new_ru"]])
+
+		# Старое слово в базе и равно новому
+		new_dict = self.dict_obj._rename_in_json_dict(" En1 ", "EN1", "new_tr", "new_ru", copy.deepcopy(j_dict))
+		self.assertEqual(new_dict, [["en0", "tr0", "ru0"], ["EN1", "new_tr", "new_ru"]])
+
+		# # английское слово имеет дубликаты не равные старому слову
+		try:
+			self.dict_obj._rename_in_json_dict("en1", "EN0", "new_tr", "new_ru", copy.deepcopy(j_dict))
+			self.fail("except not found")
+		except ErrDict:
+			pass
+
+	def test_rename_in_dict(self):
+		"Проверим корректность переименования в загруженных данных"
+		self.load_dict(0, 2)
+		old_word = self.dict_obj.get_word_by_key("en0")
+
+		self.dict_obj._rename_in_dict("en0", "new_en", "new_tr", "new_ru")
+
+		new_word = self.dict_obj.get_word_by_key("new_en")
+		self.assertEqual(("new_en", "[%s]" % "new_tr", "new_ru"), new_word.get_show_info())
+		self.assertLoad(1)
+		self.assertEqual(len(self.dict_obj.words), 2)
+		self.assertEqual(old_word is new_word, True)
 
 if __name__ == "__main__":
 	suite = unittest.TestLoader().loadTestsFromTestCase(DictTestCase)

@@ -77,7 +77,7 @@ class ClippedText:
 class TableCanvas(Canvas):
     """A tkinter class for providing table functionality"""
 
-    def __init__(self, parent, model, newdict=None, width=None, height=None, callback=None, sort_enable=True, **kwargs):
+    def __init__(self, parent, model, newdict=None, width=None, height=None, callback=None, sort_enable=True, dbl_click_callback=None, **kwargs):
         Canvas.__init__(self, parent, bg='white',
                         width=width, height=height,
                         relief=GROOVE, scrollregion=(0, 0, 300, 200))
@@ -92,6 +92,7 @@ class TableCanvas(Canvas):
         self.multiplecollist = []
         self.navFrame = None
         self.callback = callback
+        self.dbl_click_callback = dbl_click_callback
         self.pointer = [None, None, None]
         self.clipped_tbl = []
         self.time_sort = None
@@ -508,21 +509,23 @@ class TableCanvas(Canvas):
         self.bind("<ButtonRelease-1>", self.handle_left_release)
         self.bind('<B1-Motion>',       self.handle_mouse_drag)
         self.bind('<Motion>',          self.handle_motion)
+        if self.dbl_click_callback:
+            self.bind("<Double-Button-1>", self.handle_left_dbl_click)
 
-        self.parentframe.master.bind_all("<Up>",     self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<Down>",   self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<Right>",  self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<Left>",   self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<Prior>",  self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<Next>",   self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<Home>",   self.handle_arrow_keys)
-        self.parentframe.master.bind_all("<End>",    self.handle_arrow_keys)
+        self.parentframe.master.bind("<Up>",     self.handle_arrow_keys)
+        self.parentframe.master.bind("<Down>",   self.handle_arrow_keys)
+        self.parentframe.master.bind("<Right>",  self.handle_arrow_keys)
+        self.parentframe.master.bind("<Left>",   self.handle_arrow_keys)
+        self.parentframe.master.bind("<Prior>",  self.handle_arrow_keys)
+        self.parentframe.master.bind("<Next>",   self.handle_arrow_keys)
+        self.parentframe.master.bind("<Home>",   self.handle_arrow_keys)
+        self.parentframe.master.bind("<End>",    self.handle_arrow_keys)
 
-        self.parentframe.master.bind_all("<MouseWheel>",
+        self.parentframe.master.bind("<MouseWheel>",
             lambda event=None: self.mouse_wheel(-math.trunc(math.copysign(1, event.delta))))
-        self.parentframe.master.bind_all('<Button-4>',
+        self.parentframe.master.bind('<Button-4>',
             lambda event=None: self.mouse_wheel(-1))
-        self.parentframe.master.bind_all('<Button-5>',
+        self.parentframe.master.bind('<Button-5>',
             lambda event=None: self.mouse_wheel(1))
 
         self.parentframe.bind("<Configure>", self.resizeTable)
@@ -559,6 +562,14 @@ class TableCanvas(Canvas):
         self.drawSelectedRow()
         self.drawSelectedRect()
         self.tablerowheader.drawSelectedRows(rowclicked)
+
+    def handle_left_dbl_click(self, event):
+        rowclicked = self.get_row_clicked(event)
+        colclicked = self.get_col_clicked(event)
+        if self.is_valid_page_row(rowclicked) and self.is_valid_col(colclicked):
+            abs_row = self.model.page_row_to_absolute_row(rowclicked)
+            word = self.model.get_dop_info(abs_row)
+            self.dbl_click_callback(word, abs_row)
 
     def handle_mouse_drag(self, event):
         """Handle mouse moved with button held down, multiple selections"""

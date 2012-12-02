@@ -16,6 +16,112 @@ clr_error         = "#FC0039"
 clr_stat          = ["#7B7B00", "#007B00", "#7B7B7B"]
 
 
+def edit_image():
+	img = PhotoImage(format="gif",
+		data="R0lGODlhEAAQAMQAAAAAAP//////3f/lbv/MAN2qAMSRAKp3AP/lzP+/mcxmM+WATf+ZZswzM5kz" +
+				"M/9mZt1mZt3d3czMzLu7u6qqqpmZmYiIiGZmZjMzM////wAAAAAAAAAAAAAAAAAAAAAAACH5BAEA" +
+				"ABkALAAAAAAQABAAAAVJYCaOpFg9T6lmVURBzToWAiVZsUwPhDVdOgGvUACudgTiITgsLI/CpJMp" +
+				"faqQSmoW2rSWGAhDVZZZIBKHKRmTYDC8KwzGoSCPQgA7")
+	return img
+
+
+def stat_image():
+	img = PhotoImage(format="gif",
+		data="R0lGODlhEAAQAOYAAAAAAP///5dxdJNtdI9qdItncl6Atnef33uk5Fx+s3uk44Cp6Iav7Yav64Wt" +
+				"6Yew64uz7oq18Yy384659JC79Y638ZC785S+9ZO99JbA9qjP+qvS+maRMGCILV6FLJLAQZG+QpK/" +
+				"SJbEPpXDP5PBQJDEII3BH4q+H5PHIYy/I47CJJLEJZjLKJfHMpjIN6HPPJzKO57MPKTSP6LQPqDP" +
+				"Pp/NPZrIPKXUQZjGPafTTLzlYsjteJfKI5rOJZXHJp7QKJvOKp/QLKPVLqTVMqnZN6nZO6bUPqPR" +
+				"Pa7dQajWQq7cRKnWQ6zYRa3ZSLPgTLPfTrDcTrnjVbTfVLnjV7jhW8fsdMfsdaKOGqSGG6CBHJx8" +
+				"Hph3IJRzIZFvIotsJuaRUuaSUvCMSPGUVPSgZ/Slbt1XBOBdCuBmGuVqG+NrH+d3Lut7Me2FQZcx" +
+				"DZQxDaaAdqWIgqF8dZx2df///wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH5" +
+				"BAEAAHMALAAAAAAQABAAAAe4gHOCg4SFhoU7VVVWTIeEOlFRU0aOg1ROTk9HlYJSSEhKL4MbGhuF" +
+				"UERERTGDGRQZhU1CQkMwgxcTF4VLPz9BNoMYEhhwYF9gV0k9PUA4gxYRFm9kY2RYNzw8LCKDFQwV" +
+				"cWJhYlkyKCg+I4MQCxBybGtsWjMlJSskgw8KDwJqaGpbaJgwoeLDIAcHHAxIYyYNlxonTqQAMagB" +
+				"ggYEzpQ50yVHixYuQgwykMBAgTZu2njp4KElhzmBAAA7")
+	return img
+
+
+class TopDialog(Toplevel):
+	def __init__(self, parent, body_param):
+		Toplevel.__init__(self, parent)
+
+		self.withdraw()
+		self.body(body_param)
+		self.transient(parent)
+		self.parent = parent
+		self.deiconify()
+
+	def run(self):
+		self.protocol("WM_DELETE_WINDOW", self.on_destroy)
+		self.focus_set()
+		self.wait_window(self)
+
+	def set_size(self, width, height):
+		sc_width  = self.winfo_screenwidth()
+		sc_height = self.winfo_screenheight()
+		width     = min(width, sc_width)
+		height    = min(height, sc_height)
+		x = (sc_width - width) / 2
+		y = (sc_height - height) / 2
+		y = max(y - 20, 0)
+		self.wm_geometry("%dx%d+%d+%d" % (width, height, x, y))
+
+	def body(self, param):
+		pass
+
+	def on_destroy(self, event=None):
+		self.parent.focus_set()
+		self.destroy()
+
+
+class EditWordDialog(TopDialog):
+	def __init__(self, parent, param):
+		TopDialog.__init__(self, parent, param)
+		self.title(_("win_editword_title"))
+		self.wait_visibility()
+		self.set_size(self.winfo_reqwidth(), self.winfo_reqheight())
+		self.resizable(True, False)
+		self.run()
+
+	def body(self, param):
+		prnt = self
+		fnt_edit = Font(family="Arial", size=-16)  # 12
+
+		self.old_en = param[0]
+		self.var_en = StringVar(value=param[0])
+		self.var_tr = StringVar(value=param[1])
+		self.var_ru = StringVar(value=param[2])
+
+		Label(prnt, text=_("lbl_edit_en")).grid(padx=15, sticky=SW)
+		edit_en = Entry(prnt, font=fnt_edit, textvariable=self.var_en)
+		edit_en.grid(padx=15, pady=4, sticky=EW)
+		edit_en.focus()
+		edit_en.select_range(0, END)
+
+		Label(prnt, text=_("lbl_edit_tr")).grid(padx=15, sticky=W)
+		Entry(prnt, font=fnt_edit, textvariable=self.var_tr).grid(padx=15, pady=4, sticky=EW)
+
+		Label(prnt, text=_("lbl_edit_ru")).grid(padx=15, sticky=W)
+		Entry(prnt, font=fnt_edit, textvariable=self.var_ru).grid(padx=15, pady=4, sticky=EW)
+
+		frm_btn = Frame(prnt)
+		Button(frm_btn, text="OK", width=10, command=self.on_ok, default=ACTIVE).pack(side=LEFT, padx=5, pady=5)
+		Button(frm_btn, text="Cancel", width=10, command=self.on_destroy).pack(side=LEFT, padx=5, pady=5)
+		frm_btn.grid(padx=10, pady=5, sticky=EW)
+
+		self.bind("<Return>", self.on_ok)
+		self.bind("<Escape>", self.on_destroy)
+
+		prnt.grid_rowconfigure(0, minsize=30)
+		prnt.grid_columnconfigure(0, weight=1)
+		prnt.minsize(300, prnt.minsize()[1])
+
+	def on_ok(self, event=None):
+		if tkMessageBox.askyesno(_("win_confirm_title"), _("msg_confirm_rename")):
+			if self.parent.rename_word(self.old_en, self.var_en.get(), self.var_tr.get(), self.var_ru.get()):
+				self.on_destroy()
+
+
 class StatisticDialog(Toplevel):
 	def __init__(self, parent, statistic, stat_count_row):
 		Toplevel.__init__(self, parent)
@@ -83,11 +189,11 @@ class StatisticDialog(Toplevel):
 		self.model_ru_en.add_column(_("clm_pers_suc"),      typedata='percent', align='right', max_val=u"100.0 %")
 		self.model_ru_en.add_column(_("clm_state"),         typedata='text',    align='left', max_val=_("st_study") + u"  ")
 
-		for row in statistic.get_ru_en():
-			self.model_ru_en.add_row(row)
+		for row, word in statistic.get_ru_en():
+			self.model_ru_en.add_row(row, word)
 		self.model_ru_en.sort(6, False)
 
-		self.table_detailed_stat = TableCanvas(self.frame_detailed_stat, self.model_ru_en, sort_enable=True, callback=self.draw_callback)
+		self.table_detailed_stat = TableCanvas(self.frame_detailed_stat, self.model_ru_en, sort_enable=True, callback=self.draw_callback, dbl_click_callback=self.rename_dlg)
 		self.table_detailed_stat.createTableFrame()
 
 		self.model_en_ru = TableModel(stat_count_row, True)
@@ -99,8 +205,8 @@ class StatisticDialog(Toplevel):
 		self.model_en_ru.add_column(_("clm_pers_suc"),      typedata='percent', align='right')
 		self.model_en_ru.add_column(_("clm_state"),         typedata='text',    align='left')
 
-		for row in statistic.get_en_ru():
-			self.model_en_ru.add_row(row)
+		for row, word in statistic.get_en_ru():
+			self.model_en_ru.add_row(row, word)
 		self.model_en_ru.sort(6, False)
 
 		for col in range(0, self.model_en_ru.get_column_count()):
@@ -145,6 +251,28 @@ class StatisticDialog(Toplevel):
 
 		self.button_sel(0)
 		self.show_ru_en()
+
+	def rename_dlg(self, word, row):
+		self.rn_word = word
+		self.rn_row  = row
+		EditWordDialog(self, (word.get_source_info()))
+		self.rn_word = None
+		self.rn_row  = None
+
+	def rename_word(self, old_en, new_en, new_tr, new_ru):
+		if not self.parent._rename_word(old_en, new_en, new_tr, new_ru):
+			return False
+		if self.rn_word is not None and self.rn_row is not None:
+			en_word, transcription, ru_word = self.rn_word.get_show_info()
+			row = self.rn_row
+			self.model_ru_en.set_value(0, row, en_word)
+			self.model_ru_en.set_value(1, row, transcription)
+			self.model_ru_en.set_value(2, row, ru_word)
+			self.model_en_ru.set_value(0, row, en_word)
+			self.model_en_ru.set_value(1, row, transcription)
+			self.model_en_ru.set_value(2, row, ru_word)
+			self.table_detailed_stat.redrawTable()
+		return True
 
 	def draw_callback(self, row, col, celltxt, clr):
 		if col == 6:
@@ -217,10 +345,18 @@ class MainWindow(Tk):
 
 		Label(frm_stat, font=fnt_stat, bg=clr_stat_frame, text=_("correct_incorrect")).pack(side="left")
 
-		img = PhotoImage(file="info.gif")
-		bt = Button(frm_stat, image=img, bg=clr_stat_frame, relief="flat", command=self.show_statistic)
+		frm_btn = Frame(frm_stat, bg=clr_stat_frame)
+		frm_btn.pack(side="right")
+
+		img = stat_image()
+		bt = Button(frm_btn, image=img, bg=clr_stat_frame, relief="flat", command=self.show_statistic)
 		bt.image = img
 		bt.pack(side="right")
+
+		img = edit_image()
+		self.edit_btn = Button(frm_btn, image=img, bg=clr_stat_frame, relief="flat", command=self.edit_word)
+		self.edit_btn.image = img
+		self.edit_btn.pack(side="right")
 
 		self.lbl_stat_error = Label(frm_stat, font=fnt_stat, bg=clr_stat_frame, fg=clr_error, borderwidth=0)
 		self.lbl_stat_error.pack(side="right")
@@ -261,6 +397,7 @@ class MainWindow(Tk):
 		self.edit_translate.focus()
 
 		self.bind("<Return>", self.on_check_translate)
+		self.bind("<Control-Return>", self.on_rename)
 		self.bind("<FocusIn>", lambda event: self.edit_translate.focus())
 		########################################################
 
@@ -281,6 +418,12 @@ class MainWindow(Tk):
 		pass
 
 	def end_practice(self, user_answer):
+		pass
+
+	def rename_word(self, old_en, new_en, new_tr, new_ru):
+		pass
+
+	def get_source_info(self):
 		pass
 
 	def global_statistic(self):
@@ -312,10 +455,17 @@ class MainWindow(Tk):
 	def show_statistic(self):
 		StatisticDialog(self, self.global_statistic(), self.cfg.get_dict()["stat_count_row"])
 
+	def edit_word(self):
+		EditWordDialog(self, self.get_source_info())
+
 	def show_critical_error(self, loc_res_msg):
 		tkMessageBox.showerror(_("win_critical_error"), _(loc_res_msg))
 
+	def show_error(self, loc_res_msg):
+		tkMessageBox.showerror(_("win_error"), _(loc_res_msg))
+
 	def set_word(self, new_word, is_new):
+		self.edit_btn.pack_forget()
 		if is_new:
 			self.lbl_result_msg["text"]  = ""
 		else:
@@ -336,6 +486,7 @@ class MainWindow(Tk):
 		else:
 			self.lbl_result_msg["text"] = _("incorrect")
 			self.lbl_result_msg["fg"]   = clr_error
+		self.edit_btn.pack(side="right")
 
 	def set_stat(self, stat):
 		success_cnt = stat[0]
@@ -355,3 +506,7 @@ class MainWindow(Tk):
 			self.edit_translate["state"] = "normal"
 			self.new_practice()
 		self.show_answer = not self.show_answer
+
+	def on_rename(self, event):
+		if not self.show_answer:
+			self.edit_word()

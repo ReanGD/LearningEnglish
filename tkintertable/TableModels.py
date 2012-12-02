@@ -87,6 +87,16 @@ class RowList(object):
         else:
             return None
 
+    def set(self, col, row, value):
+        if self.count_col() > col and self.count_row() > row:
+            self.rows[row][col] = value
+
+    def get_dop_info(self, row):
+        if self.count_row() > row:
+            return self.rows[row][-1]
+        else:
+            return None
+
     def count_col(self):
         return self.cnt_col
 
@@ -99,11 +109,11 @@ class RowList(object):
             raise ErrRowList('Number of columns must be greater than 0')
         self.cnt_col = cnt_col
 
-    def add(self, row):
+    def add(self, row, dop_info):
         if self.count_col() != len(row):
             msg = 'number of elements in the row should be = %i' % self.count_col()
             raise ErrRowList(msg)
-        self.rows.append(row)
+        self.rows.append(list(row) + [dop_info])
 
     def clear(self):
         self.rows = []
@@ -142,8 +152,8 @@ class TableModel(object):
         self.data.create(self.columns.count())
         self.recalc_page(self.currentpage)
 
-    def add_row(self, row):
-        self.data.add(row)
+    def add_row(self, row, dop_info=None):
+        self.data.add(row, dop_info)
         self.recalc_page(self.currentpage)
 
     def sort(self, col, is_reverse):
@@ -213,6 +223,12 @@ class TableModel(object):
             if self.get_column(col).typedata == 'percent':
                 text += u' %'
         return text
+
+    def set_value(self, col, row, value):
+        self.data.set(col, row, value)
+
+    def get_dop_info(self, row):
+        return self.data.get_dop_info(row)
 
     def get_page_rows(self):
         return self.rowrange

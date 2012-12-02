@@ -15,8 +15,11 @@ class Practice:
 		self.result    = None
 		self.is_answer = False
 
-	def source_data(self):
-		return self.word.source_data(self.type_pr)
+	def question_data(self):
+		return self.word.question_data(self.type_pr)
+
+	def get_source_info(self):
+		return self.word.get_source_info()
 
 	def update_stat(self, dt):
 		if self.result != None:
@@ -33,20 +36,24 @@ class Practice:
 			self.lesson.update_stat(is_success)
 		return is_success, right_answer
 
+	def last_result(self):
+		return self.is_answer, self.word.question_data(word.ru_to_en_write if self.type_pr == word.en_to_ru_write else word.en_to_ru_write)
+
 
 class Lesson:
 	def __init__(self, cfg):
 		random.seed()
+		cfg_dict           = cfg.get_dict()
 		self.type_pr       = random.choice([word.en_to_ru_write, word.ru_to_en_write])
-		self.dict          = dictionary.Dict()
-		self.max_success   = cfg["words_per_lesson"]
+		self.dict          = dictionary.Dict(cfg)
+		self.max_success   = cfg_dict["words_per_lesson"]
 		self.cnt_success   = 0
 		self.cnt_error     = 0
-		self.path_to_stat  = cfg["path_to_stat"]
+		self.path_to_stat  = cfg_dict["path_to_stat"]
 		self.practice_list = []
-		self.dict.reload_dict(cfg["path_to_dict"])
+		self.dict.reload_dict(cfg_dict["path_to_dict"])
 		self.dict.reload_stat(self.path_to_stat)
-		words = self.dict.words_for_lesson(cfg["CntStudyWords"], cfg["MinPercent"], cfg["MinSuccessCnt"], self.type_pr)
+		words = self.dict.words_for_lesson(cfg_dict["CntStudyWords"], cfg_dict["MinPercent"], cfg_dict["MinSuccessCnt"], self.type_pr)
 		self.lsn_words = lesson_words.LessonWords(words)
 
 	def get_dict(self):

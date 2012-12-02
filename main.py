@@ -19,8 +19,9 @@ class App(GUI.MainWindow):
 		self.mainloop()
 
 	def new_lesson(self):
+		self.cfg.reload()
 		try:
-			self.lesson = lesson.Lesson(self.cfg.reload())
+			self.lesson = lesson.Lesson(self.cfg)
 		except dictionary.ErrDict as err:
 			self.show_critical_error(err.loc_res_msg)
 			sys.exit(0)
@@ -46,13 +47,34 @@ class App(GUI.MainWindow):
 			is_new = (self.practice == None or self.practice.is_end())
 			if is_new:
 				self.practice = self.lesson.get_next_practice()
-			new_word = self.practice.source_data()
+			new_word = self.practice.question_data()
 			self.set_stat(self.lesson.get_lesson_stat())
 			self.set_word(new_word, is_new)
 
 	def end_practice(self, user_answer):
 		is_success, right_answer = self.practice.check(user_answer)
 		self.set_practice_result(is_success, right_answer)
+
+	def _rename_word(self, old_en, new_en, new_tr, new_ru):
+		result = True
+		try:
+			self.lesson.get_dict().rename_word(old_en, new_en, new_tr, new_ru)
+		except dictionary.ErrDict as err:
+			self.show_error(err.loc_res_msg)
+			result = False
+		return result
+
+	def rename_word(self, old_en, new_en, new_tr, new_ru):
+		result = self._rename_word(old_en, new_en, new_tr, new_ru)
+		if result:
+			cur_word = self.practice.question_data()
+			self.set_word(cur_word, False)
+			is_success, right_answer = self.practice.last_result()
+			self.set_practice_result(is_success, right_answer)
+		return result
+
+	def get_source_info(self):
+		return self.practice.get_source_info()
 
 	def global_statistic(self):
 		min_percent     = self.cfg.get_dict()["MinPercent"]
