@@ -38,7 +38,7 @@ class App(GUI.MainWindow):
 			self.show_critical_error(err.loc_res_msg)
 			sys.exit(0)
 		self.hide()
-		retry_time = self.cfg.get_dict()["retry_time"] * 1000
+		retry_time = self.cfg["retry_time"] * 1000
 		self.after(retry_time, self.new_lesson)
 
 	def new_practice(self):
@@ -78,9 +78,7 @@ class App(GUI.MainWindow):
 		return self.practice.get_source_info()
 
 	def global_statistic(self):
-		min_percent     = self.cfg.get_dict()["MinPercent"]
-		min_success_cnt = self.cfg.get_dict()["MinSuccessCnt"]
-		return self.lesson.get_dict().global_statistic(min_percent, min_success_cnt)
+		return self.lesson.get_dict().global_statistic()
 
 
 def run():

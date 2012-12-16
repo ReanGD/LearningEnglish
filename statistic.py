@@ -6,21 +6,28 @@ import unittest
 
 
 class Statistic:
+	""" Хранение статистики по одному типу упражнения у слова
+		Умеет:
+		-расчитывать рейтинг слова
+		-сериализовать/десериализовать свои данные
+	"""
 	def __init__(self):
-		self.success_answer     = 0
-		self.error_answer       = 0
-		self.last_lesson_date   = None
-		self.last_lesson_result = None
+		self.success_answer     = 0  # Кол-во правильных ответов
+		self.error_answer       = 0  # Кол-во ошибочных ответов
+		self.last_lesson_date   = None  # Дата последнего ответа
+		self.last_lesson_result = None  # Результат последнего ответа
+		self.study_percent      = 0  # Процент изучения [0; 100]
 
 	def __repr__(self):
-		fmt = "Statistic(success_answer = {0}; error_answer = {1}; last_lesson_date = {2}; last_lesson_result = {3})"
-		return fmt.format(self.success_answer, self.error_answer, self.last_lesson_date, self.last_lesson_result)
+		fmt = "Statistic(success_answer = {0}; error_answer = {1}; last_lesson_date = {2}; last_lesson_result = {3}; study_percent={4})"
+		return fmt.format(self.success_answer, self.error_answer, self.last_lesson_date, self.last_lesson_result, self.study_percent)
 
 	def __eq__(self, other):
 		return self.success_answer == other.success_answer and \
 				self.error_answer == other.error_answer and \
 				self.last_lesson_date == other.last_lesson_date and \
-				self.last_lesson_result == other.last_lesson_result
+				self.last_lesson_result == other.last_lesson_result and \
+				self.study_percent == other.study_percent
 
 	def get_total_answer(self):
 		return self.success_answer + self.error_answer
@@ -28,29 +35,25 @@ class Statistic:
 	def get_success_answer(self):
 		return self.success_answer
 
-	def get_success_persent(self):
+	def get_success_percent(self):
 		total = self.get_total_answer()
 		if total > 0:
 			return float(self.success_answer) / total * 100.0
 		else:
 			return 0.0
 
-	def calc_rating(self, min_percent, min_success_cnt):
-		pers  = self.get_success_persent()
-		total = self.get_total_answer()
+	def get_study_percent(self):
+		return self.study_percent
+
+	def calc_rating(self):
+		perc = self.get_success_percent()
 
 		# Базовый рейтинг от 1 до 101
-		rating = 101.0 - pers
-		# пока не достигли необходимого числа правильных ответов, рейтинг выше
-		rest_sa = (min_success_cnt - self.success_answer)
-		if rest_sa < 0:
-			rest_sa = 0
-		rating += float(rest_sa) / min_success_cnt * 100.0
-		# для изученных слов уменьшаем рейтинг
-		if pers >= min_percent and total >= min_success_cnt:
-			rating /= 3.0
+		rating = 101.0 - self.get_study_percent()
+		# чем больше процент не правильных ответов, тем выше рейтинг
+		rating *= (1.01 - min(max(perc / 100.0, 0.0), 1.0))
 		# чем чаще слово повторяли, тем меньше рейтинг
-		rating *= math.exp(-total * 0.07)
+		rating *= math.exp(-self.get_total_answer() * 0.07)
 		# если последний ответ был неправильным увеличиваем рейтинг
 		if self.last_lesson_result == False:
 			rating *= 1.5
@@ -62,118 +65,156 @@ class Statistic:
 
 		return max(rating, 0.1)
 
-	def update(self, is_success, dt, first):
-		self.last_lesson_date   = dt
+	def update(self, is_success, add_percent):
+		self.last_lesson_date   = datetime.date.today().strftime("%Y.%m.%d")
 		self.last_lesson_result = is_success
-		if first or is_success:
+		self.study_percent      = max(min(self.study_percent + add_percent, 100), 0)
+		if is_success:
 			self.success_answer += 1
 		else:
 			self.error_answer += 1
 
-	def pack(self):
-		return [self.success_answer, self.error_answer, self.last_lesson_date, self.last_lesson_result]
-
 	def unpack(self, statistic):
-		self.success_answer, self.error_answer, self.last_lesson_date, self.last_lesson_result = statistic
+		self.success_answer, self.error_answer, self.last_lesson_date, self.last_lesson_result, self.study_percent = statistic
+
+	def pack(self):
+		return [self.success_answer, self.error_answer, self.last_lesson_date, self.last_lesson_result, self.study_percent]
 
 
 class StatisticTestCase(unittest.TestCase):
+	"Набор тестов для класса Statistic"
+
 	def setUp(self):
 		self.stat = Statistic()
 
 	def test_init(self):
-		self.assertEqual(self.stat.success_answer,        0)
-		self.assertEqual(self.stat.error_answer,          0)
-		self.assertEqual(self.stat.last_lesson_date,      None)
-		self.assertEqual(self.stat.last_lesson_result,    None)
+		"Тест конструктора"
+
+		self.assertEqual(self.stat.success_answer,     0)
+		self.assertEqual(self.stat.error_answer,       0)
+		self.assertEqual(self.stat.last_lesson_date,   None)
+		self.assertEqual(self.stat.last_lesson_result, None)
+		self.assertEqual(self.stat.study_percent,      0)
 
 	def test_eq(self):
+		"Тест оператора сравнения"
+
 		other = Statistic()
 		self.assertEqual(self.stat, other)
 
 	def test_get_total_answer(self):
+		"Тест на расчет общего кол-ва ответов"
+
 		self.assertEqual(self.stat.get_total_answer(), 0)
-		self.stat.update(True, "", False)
+		self.stat.update(True, 0)
 		self.assertEqual(self.stat.get_total_answer(), 1)
-		self.stat.update(True, "", True)
+		self.stat.update(True, 0)
 		self.assertEqual(self.stat.get_total_answer(), 2)
-		self.stat.update(False, "", True)
+		self.stat.update(False, 0)
 		self.assertEqual(self.stat.get_total_answer(), 3)
 
-	def test_get_success_persent(self):
-		self.assertEqual(self.stat.get_success_persent(), 0.0)
-		self.stat.update(True, "", False)
-		self.assertEqual(self.stat.get_success_persent(), 100.0)
-		self.stat.update(False, "", True)
-		self.assertEqual(self.stat.get_success_persent(), 100.0)
-		self.stat.update(False, "", False)
-		self.stat.update(True, "", False)
-		self.assertEqual(self.stat.get_success_persent(), 75.0)
-		self.stat.update(False, "", False)
-		self.assertEqual(self.stat.get_success_persent(), 60.0)
+	def test_get_success_percent(self):
+		"Тест на расчет процента положительных ответов"
+
+		self.assertEqual(self.stat.get_success_percent(), 0.0)
+		self.stat.update(True, 0)
+		self.assertEqual(self.stat.get_success_percent(), 100.0)
+		self.stat.update(False, 0)
+		self.stat.update(True, 0)
+		self.stat.update(True, 0)
+		self.assertEqual(self.stat.get_success_percent(), 75.0)
+		self.stat.update(False, 0)
+		self.assertEqual(self.stat.get_success_percent(), 60.0)
+
+	def test_get_study_percent(self):
+		"Тест на расчет процента изучения слова"
+
+		self.assertEqual(self.stat.get_study_percent(), 0.0)
+		self.stat.update(True, 0)
+		self.assertEqual(self.stat.get_study_percent(), 0.0)
+		self.stat.update(True, 10)
+		self.assertEqual(self.stat.get_study_percent(), 10.0)
+		self.stat.update(True, 100)
+		self.assertEqual(self.stat.get_study_percent(), 100.0)
+		self.stat.update(True, -10)
+		self.assertEqual(self.stat.get_study_percent(), 90.0)
+		self.stat.update(True, -100)
+		self.assertEqual(self.stat.get_study_percent(), 0.0)
 
 	def test_calc_rating(self):
-		today = datetime.date.today()
-		dt0   = today.strftime("%Y.%m.%d")
-		dt1   = (today - datetime.timedelta(1)).strftime("%Y.%m.%d")
+		"Тест функции расчета рейтинга"
 
-		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 201.000, 2)
+		yesterday = (datetime.date.today() - datetime.timedelta(1)).strftime("%Y.%m.%d")
 
-		self.stat.update(True, dt0, True)
-		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 84.847, 2)
+		self.assertAlmostEqual(self.stat.calc_rating(), 102.010, 2)
 
-		self.stat.update(False, dt0, False)
-		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 183.869, 2)
+		self.stat.update(True, 10)
+		self.assertAlmostEqual(self.stat.calc_rating(), 0.848, 2)
 
-		self.stat.update(True, dt0, False)
-		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 92.676, 2)
+		self.stat.update(False, -30)
+		self.assertAlmostEqual(self.stat.calc_rating(), 67.170, 2)
 
-		self.stat.update(True, dt1, False)
-		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 94.396, 2)
+		self.stat.update(True, 10)
+		self.assertAlmostEqual(self.stat.calc_rating(), 25.325, 2)
+
+		self.stat.update(True, 10)
+		self.stat.last_lesson_date = yesterday
+		self.assertAlmostEqual(self.stat.calc_rating(), 20.708, 2)
 
 		for it in range(0, 7):
-			self.stat.update(True, dt1, False)
-		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 6.078, 2)
+			self.stat.update(True, 10)
+			self.stat.last_lesson_date = yesterday
+		self.assertAlmostEqual(self.stat.calc_rating(), 0.668, 2)
 
 		for it in range(0, 25):
-			self.stat.update(True, dt1, False)
-		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 0.131, 2)
+			self.stat.update(True, 10)
+			self.stat.last_lesson_date = yesterday
+		self.assertAlmostEqual(self.stat.calc_rating(), 0.100, 2)
+
+		self.stat.update(False, -30)
+		self.assertAlmostEqual(self.stat.calc_rating(), 0.223, 2)
 
 	def test_calc_rating_not_zero(self):
-		today = datetime.date.today()
-		dt1   = (today - datetime.timedelta(1)).strftime("%Y.%m.%d")
+		"Тест на то, что функция расчета рейтинга не возвращает ноль"
 
 		for it in range(0, 10):
-			self.stat.update(True, dt1, False)
-		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 0.215, 2)
+			self.stat.update(True, 10)
+		self.assertAlmostEqual(self.stat.calc_rating(), 0.1, 2)
 
 		for it in range(0, 100):
-			self.stat.update(True, dt1, False)
-		self.assertAlmostEqual(self.stat.calc_rating(97.0, 10), 0.1, 2)
+			self.stat.update(True, 10)
+		self.assertAlmostEqual(self.stat.calc_rating(), 0.1, 2)
 
 	def test_update(self):
-		dt = "01.02.2010"
-		self.stat.update(False, dt, True)
+		"Тест функции обновления статистики"
+
+		dt = datetime.date.today().strftime("%Y.%m.%d")
+		self.stat.update(True, 10)
 		self.assertEqual(self.stat.success_answer,        1)
 		self.assertEqual(self.stat.error_answer,          0)
 		self.assertEqual(self.stat.last_lesson_date,      dt)
-		self.assertEqual(self.stat.last_lesson_result,    False)
+		self.assertEqual(self.stat.last_lesson_result,    True)
+		self.assertEqual(self.stat.study_percent,         10)
 
-		self.stat.update(False, dt, False)
+		self.stat.update(False, -50)
 		self.assertEqual(self.stat.success_answer,        1)
 		self.assertEqual(self.stat.error_answer,          1)
 		self.assertEqual(self.stat.last_lesson_date,      dt)
 		self.assertEqual(self.stat.last_lesson_result,    False)
+		self.assertEqual(self.stat.study_percent,         0)
 
-		self.stat.update(False, dt, False)
+		self.stat.update(False, -50)
 		self.assertEqual(self.stat.success_answer,        1)
 		self.assertEqual(self.stat.error_answer,          2)
 		self.assertEqual(self.stat.last_lesson_date,      dt)
 		self.assertEqual(self.stat.last_lesson_result,    False)
+		self.assertEqual(self.stat.study_percent,         0)
 
 	def test_pack_unpack(self):
-		self.assertEqual(self.stat.pack(), [0, 0, None, None])
-		statistic = (1, 2, "01.02.2010", False)
+		"Тест функции упаковки и распаковки класса"
+
+		self.assertEqual(self.stat.pack(), [0, 0, None, None, 0])
+		statistic = (1, 2, "01.02.2010", False, 10)
 		self.stat.unpack(statistic)
 		self.assertEqual(self.stat.pack(), list(statistic))
 

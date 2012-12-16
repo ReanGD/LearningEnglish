@@ -38,7 +38,6 @@ class Word:
 		self.ru_word_list  = []  # Распарсенное русское слово
 		self.rating        = 0   # Рейтинг слова, влияет на вероятность появления его в упражнении
 		self.stat          = {en_to_ru_write: statistic.Statistic(), ru_to_en_write: statistic.Statistic()}  # Ссылка на статистику по слову
-		self.first         = False  # Указывает на то, что слово еще ни разу не изучалось
 
 	@staticmethod
 	def _convert_spec_chars(s):
@@ -84,12 +83,6 @@ class Word:
 	def get_rating(self):
 		return self.rating
 
-	def set_first(self):
-		self.first = True
-
-	def is_first(self):
-		return self.first
-
 	def question_data(self, type_pr):
 		"Получение отображаемых в вопросе данных по слову"
 		if type_pr == en_to_ru_write:
@@ -119,8 +112,8 @@ class Word:
 			is_success = self._check_en(answer)
 			return is_success, WordInfo(self.en_word, self.transcription)
 
-	def update_stat(self, is_success, dt, type_pr):
-		self.stat[type_pr].update(is_success, dt, self.first)
+	def update_stat(self, is_success, add_percent, type_pr):
+		self.stat[type_pr].update(is_success, add_percent)
 
 	def get_show_info(self):
 		"Отображаемая информация в глобальной статистике по слову"
@@ -151,7 +144,7 @@ class Word:
 
 
 class WordTestCase(unittest.TestCase):
-	"Набор тестов по классу Word"
+	"Набор тестов для класса Word"
 
 	def setUp(self):
 		self.word = Word()
@@ -252,11 +245,10 @@ class WordTestCase(unittest.TestCase):
 
 		self.word.add_value(u"Hello", u"\'he\'ləu", u"привет")
 		self.word.rating = 5
-		self.word.first = True
-		self.word.update_stat(True, "01.02.2010", en_to_ru_write)
-		self.word.update_stat(False, "01.02.2010", en_to_ru_write)
-		self.word.update_stat(True, "02.03.2011", ru_to_en_write)
-		self.word.update_stat(False, "02.03.2011", ru_to_en_write)
+		self.word.update_stat(True, 50, en_to_ru_write)
+		self.word.update_stat(False, -10, en_to_ru_write)
+		self.word.update_stat(True, 40, ru_to_en_write)
+		self.word.update_stat(False, -20, ru_to_en_write)
 		import copy
 		old_stat_en = copy.deepcopy(self.word.stat[en_to_ru_write])
 		old_stat_ru = copy.deepcopy(self.word.stat[ru_to_en_write])
@@ -269,7 +261,6 @@ class WordTestCase(unittest.TestCase):
 		self.assertEqual(self.word.ru_word,       u"Чашка")
 		self.assertEqual(self.word.ru_word_list,  [u"чашка"])
 		self.assertEqual(self.word.rating,        5)
-		self.assertEqual(self.word.first,         True)
 		self.assertEqual(self.word.stat[en_to_ru_write], old_stat_en)
 		self.assertEqual(self.word.stat[ru_to_en_write], old_stat_ru)
 
@@ -378,20 +369,22 @@ class WordTestCase(unittest.TestCase):
 	def test_unpack(self):
 		"Тест на работу функции unpack"
 
-		statistic_in = {str(en_to_ru_write): [3, 2, "01.02.2010", False], str(ru_to_en_write): [3, 1, "02.03.2011", False]}
+		import datetime
+		today = datetime.date.today().strftime("%Y.%m.%d")
+		statistic_in = {str(en_to_ru_write): [2, 3, today, False, 30], str(ru_to_en_write): [2, 2, today, False, 40]}
 
 		st0 = statistic.Statistic()
-		st0.update(True, "01.02.2010", False)
-		st0.update(False, "01.02.2010", False)
-		st0.update(False, "01.02.2010", True)
-		st0.update(True, "01.02.2010", True)
-		st0.update(False, "01.02.2010", False)
+		st0.update(True, 50)
+		st0.update(False, -10)
+		st0.update(False, -10)
+		st0.update(True, 10)
+		st0.update(False, -10)
 
 		st1 = statistic.Statistic()
-		st1.update(True, "02.03.2011", False)
-		st1.update(False, "02.03.2011", False)
-		st1.update(True, "02.03.2011", True)
-		st1.update(False, "02.03.2011", True)
+		st1.update(True, 50)
+		st1.update(False, -10)
+		st1.update(True, 10)
+		st1.update(False, -10)
 
 		self.word.unpack(statistic_in)
 		self.assertEqual(self.word.stat[en_to_ru_write], st0)
@@ -400,13 +393,15 @@ class WordTestCase(unittest.TestCase):
 	def test_pack(self):
 		"Тест на работу функции pack"
 
-		statistic_out = {en_to_ru_write: [1, 2, "01.02.2010", False], ru_to_en_write: [2, 1, "02.03.2011", True]}
-		self.word.update_stat(True, "01.02.2010", en_to_ru_write)
-		self.word.update_stat(False, "01.02.2010", en_to_ru_write)
-		self.word.update_stat(False, "01.02.2010", en_to_ru_write)
-		self.word.update_stat(False, "02.03.2011", ru_to_en_write)
-		self.word.update_stat(True, "02.03.2011", ru_to_en_write)
-		self.word.update_stat(True, "02.03.2011", ru_to_en_write)
+		import datetime
+		today = datetime.date.today().strftime("%Y.%m.%d")
+		statistic_out = {en_to_ru_write: [1, 2, today, False, 30], ru_to_en_write: [2, 1, today, True, 20]}
+		self.word.update_stat(True, 50, en_to_ru_write)
+		self.word.update_stat(False, -10, en_to_ru_write)
+		self.word.update_stat(False, -10, en_to_ru_write)
+		self.word.update_stat(False, -10, ru_to_en_write)
+		self.word.update_stat(True, 10, ru_to_en_write)
+		self.word.update_stat(True, 10, ru_to_en_write)
 		self.assertEqual(self.word.pack(), statistic_out)
 
 if __name__ == "__main__":

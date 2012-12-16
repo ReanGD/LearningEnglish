@@ -165,8 +165,8 @@ class StatisticDialog(Toplevel):
 		model_common_stat.add_column(_("clm_name"),       typedata='text',    align='left')
 		model_common_stat.add_column(_("clm_ru_en_cnt"),  typedata='number',  align='right', max_val=u"99999")
 		model_common_stat.add_column(_("clm_en_ru_cnt"),  typedata='number',  align='right', max_val=u"99999")
-		model_common_stat.add_column(_("clm_ru_en_pers"), typedata='percent', align='right', max_val=u"100.0 %")
-		model_common_stat.add_column(_("clm_en_ru_pers"), typedata='percent', align='right', max_val=u"100.0 %")
+		model_common_stat.add_column(_("clm_ru_en_perc"), typedata='percent', align='right', max_val=u"100.0 %")
+		model_common_stat.add_column(_("clm_en_ru_perc"), typedata='percent', align='right', max_val=u"100.0 %")
 
 		row_name = [[_("row_learned")], [_("row_study")], [_("row_learn")], [_("row_total")]]
 		for row in [row_name[i] + it for i, it in enumerate(statistic.get_common_stat())]:
@@ -186,12 +186,11 @@ class StatisticDialog(Toplevel):
 		self.model_ru_en.add_column(_("clm_translate"),     typedata='text',    align='left')
 		self.model_ru_en.add_column(_("clm_cnt_suc"),       typedata='number',  align='right', max_val=u"999")
 		self.model_ru_en.add_column(_("clm_cnt_err"),       typedata='number',  align='right', max_val=u"999")
-		self.model_ru_en.add_column(_("clm_pers_suc"),      typedata='percent', align='right', max_val=u"100.0 %")
-		self.model_ru_en.add_column(_("clm_state"),         typedata='text',    align='left', max_val=_("st_study") + u"  ")
+		self.model_ru_en.add_column(_("clm_study_perсent"), typedata='percent', align='right', max_val=u"100.0 %")
 
 		for row, word in statistic.get_ru_en():
 			self.model_ru_en.add_row(row, word)
-		self.model_ru_en.sort(6, False)
+		self.model_ru_en.sort(5, True)
 
 		self.table_detailed_stat = TableCanvas(self.frame_detailed_stat, self.model_ru_en, sort_enable=True, callback=self.draw_callback, dbl_click_callback=self.rename_dlg)
 		self.table_detailed_stat.createTableFrame()
@@ -202,12 +201,11 @@ class StatisticDialog(Toplevel):
 		self.model_en_ru.add_column(_("clm_translate"),     typedata='text',    align='left')
 		self.model_en_ru.add_column(_("clm_cnt_suc"),       typedata='number',  align='right')
 		self.model_en_ru.add_column(_("clm_cnt_err"),       typedata='number',  align='right')
-		self.model_en_ru.add_column(_("clm_pers_suc"),      typedata='percent', align='right')
-		self.model_en_ru.add_column(_("clm_state"),         typedata='text',    align='left')
+		self.model_en_ru.add_column(_("clm_study_perсent"), typedata='percent', align='right')
 
 		for row, word in statistic.get_en_ru():
 			self.model_en_ru.add_row(row, word)
-		self.model_en_ru.sort(6, False)
+		self.model_en_ru.sort(5, True)
 
 		for col in range(0, self.model_en_ru.get_column_count()):
 			self.model_en_ru.get_column(col).width = self.model_ru_en.get_column(col).width
@@ -275,10 +273,14 @@ class StatisticDialog(Toplevel):
 		return True
 
 	def draw_callback(self, row, col, celltxt, clr):
-		if col == 6:
-			words = [_("st_learned"), _("st_study"), _("st_learn")]
-			ind = int(celltxt)
-			return words[ind], clr_stat[ind]
+		if col == 5:
+			pr = float(celltxt.strip("% "))
+			if pr >= 100.0:
+				return celltxt, clr_stat[0]
+			elif pr > 0.0:
+				return celltxt, clr_stat[1]
+			else:
+				return "0.0 %", clr_stat[2]
 		else:
 			return celltxt, clr
 

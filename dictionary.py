@@ -16,6 +16,26 @@ class ErrDict(Exception):
 		return repr(self.value)
 
 
+def statistic_v1_to_v2(data, min_percent, min_success_cnt):
+	def calc_percent(success_answer, error_answer):
+		if success_answer == 0:
+			return 0.0
+		else:
+			multiplier = 1.0 if success_answer >= min_success_cnt else 0.9
+			cnt = float(success_answer + error_answer) if success_answer >= min_success_cnt else float(min_success_cnt + error_answer)
+			abs_percent = float(success_answer) / cnt * 100.0
+			percent = abs_percent / min_percent if min_percent > 0 else 1.0
+			return min(percent, multiplier) * 100.0
+
+	min_success_cnt = max(min_success_cnt, 10)
+	for it_word in data.values():
+		for stat_key in it_word:
+			success_answer = it_word[stat_key][0]
+			error_answer = it_word[stat_key][1]
+			it_word[stat_key].append(calc_percent(success_answer, error_answer))
+	return data
+
+
 class Dict:
 	def __init__(self, cfg):
 		self.words = {}
@@ -41,9 +61,13 @@ class Dict:
 	def reload_stat_s(self, text):
 		stat_json = json.loads(text)
 		version   = stat_json["version"]
-		if version != 1:
-			raise ErrDict("Error stat file version", "err_stat_version")
 		data      = stat_json["data"]
+
+		if version == 1:
+			data = statistic_v1_to_v2(data, self.cfg["MinPercent"], self.cfg["MinSuccessCnt"])
+		elif version != 2:
+			raise ErrDict("Error stat file version", "err_stat_version")
+
 		for it in data:
 			self.get_word_by_key(it).unpack(data[it])
 
@@ -51,11 +75,8 @@ class Dict:
 		if os.path.exists(path):
 			self.reload_stat_s(open(path).read())
 
-	def loaded_words(self, type_pr):
-		return [(it, it.get_stat(type_pr)) for it in self.words.values() if it.is_load()]
-
-	def global_statistic(self, min_percent, min_success_cnt):
-		stat = global_stat.GlobalStatistic(min_percent, min_success_cnt)
+	def global_statistic(self):
+		stat = global_stat.GlobalStatistic()
 		for it in self.words.values():
 			if it.is_load():
 				stat.add_word(it, it.get_stat(word.en_to_ru_write), it.get_stat(word.ru_to_en_write))
@@ -102,22 +123,25 @@ class Dict:
 		new_ru = new_ru.strip()
 		self._rename_check(old_en, new_en, new_ru)
 
-		cfg_dict = self.cfg.reload()
+		self.cfg.reload()
 
 		import codecs
-		json_dict = json.load(codecs.open(cfg_dict["path_to_dict"], "rt", "utf-8"))
+		json_dict = json.load(codecs.open(self.cfg["path_to_dict"], "rt", "utf-8"))
 		json_dict = self._rename_in_json_dict(old_en, new_en, new_tr, new_ru, json_dict)
-		self.reload_stat(cfg_dict["path_to_stat"])
+		self.reload_stat(self.cfg["path_to_stat"])
 		self._rename_in_dict(old_en, new_en, new_tr, new_ru)
-		json.dump(json_dict, codecs.open(cfg_dict["path_to_dict"], "wt", "utf-8"), indent=2, ensure_ascii=False)
-		self.save_stat(cfg_dict["path_to_stat"])
+		json.dump(json_dict, codecs.open(self.cfg["path_to_dict"], "wt", "utf-8"), indent=2, ensure_ascii=False)
+		self.save_stat(self.cfg["path_to_stat"])
 
-	def words_for_lesson(self, cnt_study_words, min_percent, min_success_cnt, type_pr):
+	def _loaded_words(self, type_pr):
+		return [(it, it.get_stat(type_pr)) for it in self.words.values() if it.is_load()]
+
+	def words_for_lesson(self, cnt_study_words, type_pr):
 		learned_words = []
 		studied_words = []
-		for wrd, stat in self.loaded_words(type_pr):
+		for wrd, stat in self._loaded_words(type_pr):
 			if stat.get_total_answer() > 0:
-				if stat.get_success_persent() >= min_percent and stat.get_total_answer() >= min_success_cnt:
+				if stat.get_study_percent() >= 100.0:
 					learned_words.append(wrd)
 				else:
 					studied_words.append(wrd)
@@ -125,7 +149,7 @@ class Dict:
 		# дополняем изучаемыми/изученными словами из другого направления перевода
 		if len(studied_words) < cnt_study_words:
 			inv_type_pr = word.ru_to_en_write if type_pr == word.en_to_ru_write else word.en_to_ru_write
-			for wrd, stat in self.loaded_words(inv_type_pr):
+			for wrd, stat in self._loaded_words(inv_type_pr):
 				if stat.get_total_answer() > 0 and wrd not in (learned_words + studied_words):
 					studied_words.append(wrd)
 					if len(studied_words) == cnt_study_words:
@@ -133,19 +157,18 @@ class Dict:
 
 		# дополняем ни разу не изучаемыми словами
 		if len(studied_words) < cnt_study_words:
-			for wrd, stat in self.loaded_words(type_pr):
+			for wrd, stat in self._loaded_words(type_pr):
 				if stat.get_total_answer() == 0 and wrd not in (learned_words + studied_words):
-					wrd.set_first()
 					studied_words.append(wrd)
 					if len(studied_words) == cnt_study_words:
 						break
 
-		studied_words.sort(key=lambda it: it.get_stat(type_pr).get_success_persent())
+		studied_words.sort(key=lambda it: it.get_stat(type_pr).get_success_percent())
 		studied_words = studied_words[:cnt_study_words]
 
 		lesson_words = learned_words + studied_words
 		for it in lesson_words:
-			rating = it.get_stat(type_pr).calc_rating(min_percent, min_success_cnt)
+			rating = it.get_stat(type_pr).calc_rating()
 			it.set_rating(rating)
 		return lesson_words
 
@@ -153,11 +176,13 @@ class Dict:
 		data = {}
 		for it in self.words:
 			data[it] = self.words[it].pack()
-		stat_json = {"version": 1, "data": data}
+		stat_json = {"version": 2, "data": data}
 		json.dump(stat_json, open(path_to_stat, "wb"), indent=2)
 
 
 class DictTestCase(unittest.TestCase):
+	"Набор тестов для класса Dict"
+
 	def setUp(self):
 		self.dict_obj = Dict(None)
 
@@ -167,8 +192,8 @@ class DictTestCase(unittest.TestCase):
 	def create_word_stat(self, num):
 		key   = "en" + str(num)
 		date  = "2012.01"
-		stat1 = [num * 1,  num * 10, date + str(num),     num % 2 == 0]
-		stat2 = [num * 20, num * 30, date + str(num + 1), num % 2 == 1]
+		stat1 = [num * 1,  num * 10, date + str(num),     num % 2 == 0, float(num)]
+		stat2 = [num * 20, num * 30, date + str(num + 1), num % 2 == 1, float(num * 2)]
 		return [key, {"0": stat1, "1": stat2}]
 
 	def json_dict(self, interval_from, interval_to):
@@ -200,6 +225,7 @@ class DictTestCase(unittest.TestCase):
 		self.assertEqual(wrd1.get_stat(1), wrd2.get_stat(1))
 
 	def test_reload_dict(self):
+		"Тест на загрузку словаря"
 		interval_from = 0
 		interval_to   = 5
 		self.load_dict(interval_from, interval_to)
@@ -208,6 +234,7 @@ class DictTestCase(unittest.TestCase):
 			self.assertLoad(i)
 
 	def test_reload_dict_err_key(self):
+		"Тест на обращение к несуществующим словам"
 		interval_from = 0
 		interval_to   = 5
 		self.load_dict(interval_from, interval_to)
@@ -216,6 +243,7 @@ class DictTestCase(unittest.TestCase):
 			self.assertNotLoad(i)
 
 	def test_reload_dict_double_reload(self):
+		"Тест на загрузку словаря дважды"
 		interval_from1 = 0
 		interval_to1   = 5
 		self.load_dict(interval_from1, interval_to1)
@@ -230,54 +258,113 @@ class DictTestCase(unittest.TestCase):
 			self.assertLoad(i)
 
 	def test_reload_stat(self):
+		"Тест на загрузку статистики"
 		interval_from = 0
 		interval_to   = 5
 		self.load_dict(interval_from, interval_to)
-		self.load_stat(interval_from, interval_to, 1)
+		self.load_stat(interval_from, interval_to, 2)
 
 		for i in range(interval_from, interval_to):
 			self.assertLoad(i)
 			self.assertLoadStat(i)
 
 	def test_reload_stat_without_word(self):
+		"Тест на загрузку статистики без словаря"
 		interval_from = 0
 		interval_to   = 5
-		self.load_stat(interval_from, interval_to, 1)
+		self.load_stat(interval_from, interval_to, 2)
 
 		for i in range(interval_from, interval_to):
 			self.assertLoadStat(i)
 
 	def test_reload_stat_double(self):
+		"Тест на загрузку статистики дважды подряд"
 		interval_from1 = 0
 		interval_to1   = 5
-		self.load_stat(interval_from1, interval_to1, 1)
+		self.load_stat(interval_from1, interval_to1, 2)
 		interval_from2 = 3
 		interval_to2   = 8
-		self.load_stat(interval_from2, interval_to2, 1)
+		self.load_stat(interval_from2, interval_to2, 2)
 
 		for i in range(interval_from1, interval_to2):
 			self.assertLoadStat(i)
 
 	def test_loaded_words(self):
+		"Тест функции _loaded_words"
 		interval_from1 = 0
 		interval_to1   = 5
 		self.load_dict(interval_from1, interval_to1)
 		interval_from2 = 3
 		interval_to2   = 9
-		self.load_stat(interval_from2, interval_to2, 1)
+		self.load_stat(interval_from2, interval_to2, 2)
 
-		loaded_words = self.dict_obj.loaded_words(0)
+		loaded_words = self.dict_obj._loaded_words(0)
 		self.assertEqual(len(loaded_words), len(range(interval_from1, interval_to1)))
 
 		for i, it in enumerate(loaded_words):
 			self.assertEqual(it[0].get_show_info()[0], "en" + str(i))
 
-	def test_load_error_dict_ver(self):
+	def test_words_for_lesson(self):
+		"Тест выборки слов для изучения в текущем уроке"
+		interval_from1 = 0
+		interval_to1   = 5
+		self.load_dict(interval_from1, interval_to1)
+
+		w0 = self.dict_obj.get_word_by_key("en0")
+		w1 = self.dict_obj.get_word_by_key("en1")
+		w2 = self.dict_obj.get_word_by_key("en2")
+		w3 = self.dict_obj.get_word_by_key("en3")
+
+		w0.update_stat(False, 10, word.ru_to_en_write)
+		w1.update_stat(True, 10, word.en_to_ru_write)
+		w2.update_stat(True, 100, word.en_to_ru_write)
+
+		words_list = self.dict_obj.words_for_lesson(3, word.en_to_ru_write)
+		self.assertEqual(words_list, [w2, w0, w3, w1])
+		self.assertEqual(len(words_list), 4)
+
+	def test_load_error_stat_ver(self):
+		"Тест на то, что генерируется исключение на неправильную версию файла со статистикой"
 		try:
-			self.load_stat(0, 1, 2)
+			self.load_stat(0, 1, 999)
 			self.fail("except not found")
 		except ErrDict:
 			pass
+
+	def test_convert_stat_v1_to_v2(self):
+		"Тест на конвертацию формата статистики из v1 в v2"
+		data = {
+			"hello0": {"0": [0, 0, "any", "any"], "1": [0, 0, "any", "any"]},
+			"hello1": {"0": [1, 0, "any", "any"], "1": [1, 1, "any", "any"]},
+			"hello2": {"0": [9, 0, "any", "any"], "1": [9, 9, "any", "any"]},
+			"hello3": {"0": [10, 0, "any", "any"], "1": [10, 10, "any", "any"]},
+			"hello4": {"0": [20, 0, "any", "any"], "1": [20, 10, "any", "any"]}
+		}
+		data = statistic_v1_to_v2(data, 85.0, 10.0)
+		self.assertEqual(data["hello0"]["0"], [0, 0, "any", "any", 0.0])
+		self.assertEqual(data["hello0"]["1"], [0, 0, "any", "any", 0])
+
+		self.assertAlmostEqual(data["hello1"]["0"][-1], 11.7647, 2)  # ((1 / 10) * 100 / 85) *100
+		self.assertAlmostEqual(data["hello1"]["1"][-1], 10.6951, 2)  # ((1 / 11) * 100 / 85) *100
+
+		self.assertAlmostEqual(data["hello2"]["0"][-1], 90.0000, 2)  # ((9 / 10) * 100 / 85) *100
+		self.assertAlmostEqual(data["hello2"]["1"][-1], 55.7275, 2)  # ((9 / 19) * 100 / 85) *100
+
+		self.assertAlmostEqual(data["hello3"]["0"][-1], 100.0000, 2)  # ((10 / 10) * 100 / 85) *100
+		self.assertAlmostEqual(data["hello3"]["1"][-1], 58.8235, 2)  # ((10 / 20) * 100 / 85) *100
+
+		self.assertAlmostEqual(data["hello4"]["0"][-1], 100.0000, 2)  # ((20 / 10) * 100 / 85) *100
+		self.assertAlmostEqual(data["hello4"]["1"][-1], 78.4313, 2)  # ((20 / 30) * 100 / 85) *100
+
+		data = {"hello0": {"0": [1, 0, "any", "any"], "1": [1, 1, "any", "any"]}}
+		data = statistic_v1_to_v2(data, 85.0, 0.0)
+		self.assertAlmostEqual(data["hello0"]["0"][-1], 11.7647, 2)  # ((1 / 10) * 100 / 85) *100
+		self.assertAlmostEqual(data["hello0"]["1"][-1], 10.6951, 2)  # ((1 / 11) * 100 / 85) *100
+
+		data = {"hello0": {"0": [1, 0, "any", "any"], "1": [10, 1, "any", "any"]}}
+		data = statistic_v1_to_v2(data, 0.0, 10.0)
+		self.assertAlmostEqual(data["hello0"]["0"][-1], 90.0000, 2)  # ((1 / 10) * 100 / 85) *100
+		self.assertAlmostEqual(data["hello0"]["1"][-1], 100.0000, 2)  # ((1 / 11) * 100 / 85) *100
 
 	def test_rename_check(self):
 		"Тест на то, что корректно проходит проверка перед переименованием"
@@ -317,7 +404,7 @@ class DictTestCase(unittest.TestCase):
 		self.dict_obj._rename_check("en0", "new_en", "new_ru")
 
 	def test_rename_in_json_dict(self):
-		"Проверим корректность переименования в словаре, который загрузили из файла"
+		"Тест на корректность переименования в словаре, который загрузили из файла"
 		j_dict = self.json_dict(0, 2)
 
 		import copy
@@ -346,7 +433,7 @@ class DictTestCase(unittest.TestCase):
 			pass
 
 	def test_rename_in_dict(self):
-		"Проверим корректность переименования в загруженных данных"
+		"Тест на корректность переименования в загруженных данных"
 		self.load_dict(0, 2)
 		old_word = self.dict_obj.get_word_by_key("en0")
 

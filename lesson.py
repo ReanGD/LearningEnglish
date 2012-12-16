@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import random
-import datetime
 import word
 import dictionary
 import lesson_words
@@ -21,9 +20,9 @@ class Practice:
 	def get_source_info(self):
 		return self.word.get_source_info()
 
-	def update_stat(self, dt):
+	def update_stat(self, right_answer_percent, wrong_answer_percent):
 		if self.result != None:
-			self.word.update_stat(self.result, dt, self.type_pr)
+			self.word.update_stat(self.result, right_answer_percent if self.result else -wrong_answer_percent, self.type_pr)
 
 	def is_end(self):
 		return self.is_answer
@@ -43,17 +42,18 @@ class Practice:
 class Lesson:
 	def __init__(self, cfg):
 		random.seed()
-		cfg_dict           = cfg.get_dict()
-		self.type_pr       = random.choice([word.en_to_ru_write, word.ru_to_en_write])
-		self.dict          = dictionary.Dict(cfg)
-		self.max_success   = cfg_dict["words_per_lesson"]
-		self.cnt_success   = 0
-		self.cnt_error     = 0
-		self.path_to_stat  = cfg_dict["path_to_stat"]
-		self.practice_list = []
-		self.dict.reload_dict(cfg_dict["path_to_dict"])
+		self.type_pr              = random.choice([word.en_to_ru_write, word.ru_to_en_write])
+		self.dict                 = dictionary.Dict(cfg)
+		self.right_answer_percent = cfg["right_answer_percent"]
+		self.wrong_answer_percent = cfg["wrong_answer_percent"]
+		self.max_success          = cfg["words_per_lesson"]
+		self.cnt_success          = 0
+		self.cnt_error            = 0
+		self.path_to_stat         = cfg["path_to_stat"]
+		self.practice_list        = []
+		self.dict.reload_dict(cfg["path_to_dict"])
 		self.dict.reload_stat(self.path_to_stat)
-		words = self.dict.words_for_lesson(cfg_dict["CntStudyWords"], cfg_dict["MinPercent"], cfg_dict["MinSuccessCnt"], self.type_pr)
+		words = self.dict.words_for_lesson(cfg["CntStudyWords"], self.type_pr)
 		self.lsn_words = lesson_words.LessonWords(words)
 
 	def get_dict(self):
@@ -68,9 +68,8 @@ class Lesson:
 	def end_lesson(self):
 		self.dict.reload_stat(self.path_to_stat)
 
-		dt = datetime.date.today().strftime("%Y.%m.%d")
 		for it in self.practice_list:
-			it.update_stat(dt)
+			it.update_stat(self.right_answer_percent, self.wrong_answer_percent)
 
 		self.dict.save_stat(self.path_to_stat)
 
