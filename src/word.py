@@ -90,6 +90,10 @@ class Word:
 		else:
 			return WordInfo(self.ru_word, "")
 
+	def is_new(self, type_pr):
+		"Возвращает True, если слово еще не изучалось"
+		return self.stat[type_pr].is_new()
+
 	def _check_ru(self, answer):
 		answer = Word._convert_spec_chars(answer)
 		for it in self.ru_word_list:

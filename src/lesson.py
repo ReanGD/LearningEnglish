@@ -17,6 +17,9 @@ class Practice:
 	def question_data(self):
 		return self.word.question_data(self.type_pr)
 
+	def is_new(self):
+		return self.word.is_new(self.type_pr)
+
 	def get_source_info(self):
 		return self.word.get_source_info()
 

@@ -11,8 +11,11 @@ reg_cmnt = re.compile(r"/\*.*?\*/", re.DOTALL)
 class Config:
 	"Работа с конфигурационным файлом"
 
-	def __init__(self, path):
-		self.path     = path
+	def __init__(self, path=None):
+		if path is None:
+			self.path = "config.json"
+		else:
+			self.path = path
 		self.cfg_dict = {}
 
 	def __getitem__(self, key):

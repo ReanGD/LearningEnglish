@@ -45,6 +45,9 @@ class Statistic:
 	def get_study_percent(self):
 		return self.study_percent
 
+	def is_new(self):
+		return self.get_total_answer() == 0
+
 	def calc_rating(self):
 		perc = self.get_success_percent()
 
@@ -140,6 +143,13 @@ class StatisticTestCase(unittest.TestCase):
 		self.assertEqual(self.stat.get_study_percent(), 90.0)
 		self.stat.update(True, -100)
 		self.assertEqual(self.stat.get_study_percent(), 0.0)
+
+	def test_is_new(self):
+		"Тест функции is_new"
+
+		self.assertEqual(self.stat.is_new(), True)
+		self.stat.update(True, 0)
+		self.assertEqual(self.stat.is_new(), False)
 
 	def test_calc_rating(self):
 		"Тест функции расчета рейтинга"
