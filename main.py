@@ -2,9 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 import os.path
-import src.singleton
+import subprocess
 import src.app
+import src.singleton
 
 
 def run():
@@ -13,4 +15,7 @@ def run():
 	src.app.App()
 
 if __name__ == "__main__":
-	run()
+	if "-new" not in sys.argv:
+		subprocess.Popen([sys.executable] + sys.argv + ["-new"])
+	else:
+		run()
