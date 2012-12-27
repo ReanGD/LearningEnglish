@@ -31,18 +31,19 @@ class Config:
 			self.cfg_dict = json.loads(txt)
 		else:
 			self.cfg_dict = {}
-		self.cfg_dict["path_to_dict"]         = self.cfg_dict.get("path_to_dict", "dict.json")
-		self.cfg_dict["path_to_stat"]         = self.cfg_dict.get("path_to_stat", "statistic.json")
-		self.cfg_dict["words_per_lesson"]     = int(self.cfg_dict.get("words_per_lesson", 5))
-		self.cfg_dict["CntStudyWords"]        = int(self.cfg_dict.get("CntStudyWords", 50))
-		self.cfg_dict["MinPercent"]           = float(self.cfg_dict.get("MinPercent", 97.0))
-		self.cfg_dict["MinSuccessCnt"]        = int(self.cfg_dict.get("MinSuccessCnt", 10))
-		self.cfg_dict["retry_time"]           = int(self.cfg_dict.get("retry_time", 1800))
-		self.cfg_dict["hide_transcription"]   = self.cfg_dict.get("hide_transcription", "no")
-		self.cfg_dict["start_time_delay"]     = int(self.cfg_dict.get("start_time_delay", 1))
-		self.cfg_dict["stat_count_row"]       = int(self.cfg_dict.get("stat_count_row", 200))
-		self.cfg_dict["right_answer_percent"] = float(self.cfg_dict.get("right_answer_percent", 10.0))
-		self.cfg_dict["wrong_answer_percent"] = float(self.cfg_dict.get("wrong_answer_percent", 40.0))
+		self.cfg_dict["path_to_dict"]          = self.cfg_dict.get("path_to_dict", "dict.json")
+		self.cfg_dict["path_to_stat"]          = self.cfg_dict.get("path_to_stat", "statistic.json")
+		self.cfg_dict["words_per_lesson"]      = int(self.cfg_dict.get("words_per_lesson", 5))
+		self.cfg_dict["CntStudyWords"]         = int(self.cfg_dict.get("CntStudyWords", 50))
+		self.cfg_dict["MinPercent"]            = float(self.cfg_dict.get("MinPercent", 97.0))
+		self.cfg_dict["MinSuccessCnt"]         = int(self.cfg_dict.get("MinSuccessCnt", 10))
+		self.cfg_dict["retry_time"]            = int(self.cfg_dict.get("retry_time", 1800))
+		self.cfg_dict["hide_transcription"]    = self.cfg_dict.get("hide_transcription", "no")
+		self.cfg_dict["start_time_delay"]      = int(self.cfg_dict.get("start_time_delay", 1))
+		self.cfg_dict["stat_count_row"]        = int(self.cfg_dict.get("stat_count_row", 200))
+		self.cfg_dict["right_answer_percent"]  = float(self.cfg_dict.get("right_answer_percent", 10.0))
+		self.cfg_dict["wrong_answer_percent"]  = float(self.cfg_dict.get("wrong_answer_percent", 40.0))
+		self.cfg_dict["empty_answer_is_error"] = self.cfg_dict.get("empty_answer_is_error", "no")
 
 		return self.cfg_dict
 
@@ -71,8 +72,9 @@ class ConfigTestCase(unittest.TestCase):
 		self.assertEqual(cfg["stat_count_row"], 200)
 		self.assertEqual(cfg["right_answer_percent"], 10.0)
 		self.assertEqual(cfg["wrong_answer_percent"], 40.0)
+		self.assertEqual(cfg["empty_answer_is_error"], "no")
 
-		self.assertEqual(len(cfg), 12)
+		self.assertEqual(len(cfg), 13)
 
 	def test_not_exists(self):
 		"Тестирование загрузки несуществующего файла с конфигурацией"
@@ -92,8 +94,9 @@ class ConfigTestCase(unittest.TestCase):
 		self.assertEqual(cfg["stat_count_row"], 200)
 		self.assertEqual(cfg["right_answer_percent"], 10.0)
 		self.assertEqual(cfg["wrong_answer_percent"], 40.0)
+		self.assertEqual(cfg["empty_answer_is_error"], "no")
 
-		self.assertEqual(len(cfg), 12)
+		self.assertEqual(len(cfg), 13)
 
 if __name__ == "__main__":
 	suite = unittest.TestLoader().loadTestsFromTestCase(ConfigTestCase)

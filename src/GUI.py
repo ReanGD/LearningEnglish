@@ -198,7 +198,7 @@ class MainWindow(Tk):
 	def on_return(self, event):
 		if self.state == "waiting_for_answer":
 			user_answer = self.edit_translate.get()
-			if user_answer.strip() == "":
+			if self.cfg["empty_answer_is_error"] == "no" and user_answer.strip() == "":
 				return
 			self.end_practice(user_answer)
 			self.state = "continue"
