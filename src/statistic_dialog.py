@@ -181,8 +181,7 @@ class OperationShowStatistic(BaseOperation):
 		self.callback()
 
 
-def _test_run():
-
+def run_exclusive():
 	from config import Config
 	cfg = Config()
 	cfg.reload()
@@ -199,6 +198,13 @@ def _test_run():
 	tk = Tk()
 	tk.withdraw()
 	factory.get_operation("ShowStatistic").execute(tk)
+
+
+def _test_run():
+	import os
+	import os.path
+	os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+	run_exclusive()
 
 if __name__ == '__main__':
 	_test_run()

@@ -1,3 +1,5 @@
 /*.sublime*
+/*.bat
+/img/*
 /statistic.json
 *.pyc
