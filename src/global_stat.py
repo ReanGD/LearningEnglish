@@ -113,5 +113,8 @@ class GlobalStatisticTestCase(unittest.TestCase):
 			[unicode(3), unicode(3), unicode(100.0), unicode(100.0)]])
 
 if __name__ == "__main__":
+	import os
+	import os.path
+	os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 	suite = unittest.TestLoader().loadTestsFromTestCase(GlobalStatisticTestCase)
 	unittest.TextTestRunner(verbosity=2).run(suite)

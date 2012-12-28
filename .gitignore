@@ -1,5 +1,7 @@
+/img/*
 /*.sublime*
 /*.bat
-/img/*
+/test.py
 /statistic.json
+/config_user.json
 *.pyc

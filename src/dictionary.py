@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import json
+import os
 import os.path
+import json
 import word
 import global_stat
 import unittest
@@ -446,5 +447,6 @@ class DictTestCase(unittest.TestCase):
 		self.assertEqual(old_word is new_word, True)
 
 if __name__ == "__main__":
+	os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 	suite = unittest.TestLoader().loadTestsFromTestCase(DictTestCase)
 	unittest.TextTestRunner(verbosity=2).run(suite)

@@ -315,7 +315,7 @@ def _test_run():
 	manager = _LookManager(wnd)
 	wnd.bind("<Return>", manager.next)
 	import config
-	wnd.cfg = config.Config("fake_config.json")
+	wnd.cfg = config.Config("fake_config.json", "fake_config_user.json")
 	wnd.cfg.reload()
 	manager.next()
 	wnd.mainloop()

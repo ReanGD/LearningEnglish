@@ -60,5 +60,8 @@ class LocResTestCase(unittest.TestCase):
 		self.assertEqual(_str_dict["end_lesson"], _("end_lesson"))
 
 if __name__ == "__main__":
+	import os
+	import os.path
+	os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 	suite = unittest.TestLoader().loadTestsFromTestCase(LocResTestCase)
 	unittest.TextTestRunner(verbosity=2).run(suite)

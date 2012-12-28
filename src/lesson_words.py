@@ -66,5 +66,8 @@ class LessonWordsTestCase(unittest.TestCase):
 		self.get_any_word(lw.get_any_word())
 
 if __name__ == "__main__":
+	import os
+	import os.path
+	os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 	suite = unittest.TestLoader().loadTestsFromTestCase(LessonWordsTestCase)
 	unittest.TextTestRunner(verbosity=2).run(suite)

@@ -15,6 +15,7 @@ class App(MainWindow):
 		self.lesson     = None
 		self.practice   = None
 		self.cfg        = config.Config()
+		self.cfg.create_default_user_config()
 		self.factory    = OperationFactory()
 		MainWindow.__init__(self, self.factory)
 		self.new_lesson()

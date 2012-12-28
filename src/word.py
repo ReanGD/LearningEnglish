@@ -409,5 +409,8 @@ class WordTestCase(unittest.TestCase):
 		self.assertEqual(self.word.pack(), statistic_out)
 
 if __name__ == "__main__":
+	import os
+	import os.path
+	os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 	suite = unittest.TestLoader().loadTestsFromTestCase(WordTestCase)
 	unittest.TextTestRunner(verbosity=2).run(suite)
