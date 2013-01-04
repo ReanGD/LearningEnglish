@@ -3,6 +3,7 @@
 import os
 import os.path
 import json
+import json.encoder
 import word
 import global_stat
 import unittest
@@ -37,6 +38,57 @@ def statistic_v1_to_v2(data, min_percent, min_success_cnt):
 	return data
 
 
+class DictJSONEncoder(json.JSONEncoder):
+
+	def __init__(self, skipkeys, ensure_ascii, check_circular, allow_nan, indent, separators, encoding, default):
+		json.JSONEncoder.__init__(self, skipkeys=False, ensure_ascii=False, check_circular=False, allow_nan=True,
+								sort_keys=False, indent=4, separators=(", ", ": "), encoding="utf-8", default=None)
+
+	def _iterencode_list_lvl2(self, lst, max_len_lst):
+		if len(lst) not in (2, 3):
+			return "[]"
+
+		if len(lst) == 2:
+			sp_len0 = max_len_lst[0] + max_len_lst[1] - len(lst[0]) + 3
+			arr = [lst[0], " " * sp_len0 + lst[1]]
+		else:
+			sp_len0 = max_len_lst[0] - len(lst[0]) + 1
+			sp_len1 = max_len_lst[1] - len(lst[1]) + 1
+			arr = [	lst[0],
+					" " * sp_len0 + lst[1],
+					" " * sp_len1 + lst[2]]
+
+		return "[%s]" % ",".join(arr)
+
+	def _iterencode_list(self, lst, markers=None):
+		if not lst:
+			yield "[]"
+			return
+
+		self.current_indent_level = 1
+		newline_indent = self._newline_indent()
+		separator = "," + newline_indent
+
+		max_len_lst = [0, 0]
+		str_lst = map(lambda row: [json.encoder.encode_basestring(it) for it in row if it.strip() != ""], lst)
+		for row in str_lst:
+			max_len_lst[0] = max(max_len_lst[0], len(row[0]))
+			if len(row) == 3:
+				max_len_lst[1] = max(max_len_lst[1], len(row[1]))
+
+		yield "[" + newline_indent
+
+		first = True
+		for value in str_lst:
+			if first:
+				first = False
+			else:
+				yield separator
+			yield self._iterencode_list_lvl2(value, max_len_lst)
+
+		yield "\n]"
+
+
 class Dict:
 	def __init__(self, cfg):
 		self.words = {}
@@ -51,9 +103,11 @@ class Dict:
 	def reload_dict_s(self, text):
 		self.words = {}
 		for it in json.loads(text):
-			en = it[0]
-			tr = it[1]
-			ru = it[2]
+			if len(it) == 3:
+				en, tr, ru = it
+			else:
+				en, ru = it
+				tr = ""
 			self.get_word_by_key(en).add_value(en, tr, ru)
 
 	def reload_dict(self, path):
@@ -105,6 +159,8 @@ class Dict:
 		for it in json_dict:
 			en = it[0].strip().lower()
 			if en == old_en:
+				if len(it) == 2:
+					it.append("")
 				it[0], it[1], it[2] = new_en, new_tr, new_ru
 				is_find = True
 			elif en == lower_en:
@@ -131,7 +187,7 @@ class Dict:
 		json_dict = self._rename_in_json_dict(old_en, new_en, new_tr, new_ru, json_dict)
 		self.reload_stat(self.cfg["path_to_stat"])
 		self._rename_in_dict(old_en, new_en, new_tr, new_ru)
-		json.dump(json_dict, codecs.open(self.cfg["path_to_dict"], "wt", "utf-8"), indent=2, ensure_ascii=False)
+		json.dump(json_dict, codecs.open(self.cfg["path_to_dict"], "wt", "utf-8"), cls=DictJSONEncoder)
 		self.save_stat(self.cfg["path_to_stat"])
 
 	def _loaded_words(self, type_pr):
@@ -233,6 +289,16 @@ class DictTestCase(unittest.TestCase):
 
 		for i in range(interval_from, interval_to):
 			self.assertLoad(i)
+
+	def test_reload_dict_empty_tr(self):
+		"Тест на загрузку словаря, в котором отсутствует или пустая транскрипция"
+		json_dict = [["en0", "ru0"], ["en1", "", "ru1"], ["en2", "tr2", "ru2"]]
+		txt_dict = json.dumps(json_dict)
+		self.dict_obj.reload_dict_s(txt_dict)
+
+		self.assertEqual(("en0", "",      "ru0"), self.dict_obj.get_word_by_key("en0").get_show_info())
+		self.assertEqual(("en1", "",      "ru1"), self.dict_obj.get_word_by_key("en1").get_show_info())
+		self.assertEqual(("en2", "[tr2]", "ru2"), self.dict_obj.get_word_by_key("en2").get_show_info())
 
 	def test_reload_dict_err_key(self):
 		"Тест на обращение к несуществующим словам"

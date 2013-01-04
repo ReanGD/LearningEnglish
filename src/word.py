@@ -60,7 +60,7 @@ class Word:
 			en_split = map(lambda x: x.strip(), en_word.split(","))
 			self.en_word = Word._prepare_show_words(en_split)
 			self.en_word_list = map(lambda x: reg_no_sign_part.sub(".*?", reg_cmnt.sub("", x.lower()).strip()), en_split)
-		if self.transcription == "":
+		if self.transcription == "" and transcription is not None and transcription.strip() != "":
 			self.transcription = "[%s]" % transcription.strip()
 		self.ru_source += map(lambda x: x.strip(), ru_word.split(","))
 
@@ -128,7 +128,7 @@ class Word:
 		return (self.en_source, self.transcription.strip("[]"), ", ".join(self.ru_source))
 
 	def is_load(self):
-		return self.transcription != ""
+		return self.en_word != ""
 
 	def get_stat(self, type_pr):
 		return self.stat[type_pr]
@@ -185,6 +185,17 @@ class WordTestCase(unittest.TestCase):
 		self.assertEqual(self.word.transcription, u"[\'he\'ləu]")
 		self.assertEqual(self.word.ru_word,       u"привет, приветствие")
 		self.assertEqual(self.word.ru_word_list,  [u"привет", u"приветствие"])
+
+	def test_add_value_with_empty_transcription(self):
+		"Тест на добавление слова с пустой транскрипцией"
+
+		self.word.add_value(u"  Hello  ", u"", u"  привет  ")
+		self.assertEqual(self.word.en_word,       u"Hello")
+		self.assertEqual(self.word.en_source,     u"  Hello  ")
+		self.assertEqual(self.word.en_word_list,  [u"hello"])
+		self.assertEqual(self.word.transcription, u"")
+		self.assertEqual(self.word.ru_word,       u"привет")
+		self.assertEqual(self.word.ru_word_list,  [u"привет"])
 
 	def test_add_value_double_ru(self):
 		"Тест на добавление слова с двойным русским переводом два раза подряд (во второй раз с пустой транскрипцией)"
