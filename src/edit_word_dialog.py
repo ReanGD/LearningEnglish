@@ -3,6 +3,7 @@
 from Tkinter import *
 from tkFont import Font
 import tkMessageBox
+import dictionary
 from loc_res import _
 from top_dialog import TopDialog
 from operation import BaseOperation
