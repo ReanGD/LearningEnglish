@@ -7,6 +7,7 @@ import json.encoder
 import word
 import global_stat
 import unittest
+import codecs
 
 
 class ErrDict(Exception):
@@ -60,13 +61,13 @@ class DictJSONEncoder(json.JSONEncoder):
 
 		return "[%s]" % ",".join(arr)
 
-	def _iterencode_list(self, lst, markers=None):
+	def iterencode(self, lst):
 		if not lst:
 			yield "[]"
 			return
 
 		self.current_indent_level = 1
-		newline_indent = self._newline_indent()
+		newline_indent = "\n    "
 		separator = "," + newline_indent
 
 		max_len_lst = [0, 0]
@@ -182,7 +183,6 @@ class Dict:
 
 		self.cfg.reload()
 
-		import codecs
 		json_dict = json.load(codecs.open(self.cfg["path_to_dict"], "rt", "utf-8"))
 		json_dict = self._rename_in_json_dict(old_en, new_en, new_tr, new_ru, json_dict)
 		self.reload_stat(self.cfg["path_to_stat"])
