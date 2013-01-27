@@ -101,9 +101,9 @@ class Dict:
 			w = self.words[en] = word.Word()
 		return w
 
-	def reload_dict_s(self, text):
+	def reload_dict_from_json(self, json_dict):
 		self.words = {}
-		for it in json.loads(text):
+		for it in json_dict:
 			if len(it) == 3:
 				en, tr, ru = it
 			else:
@@ -111,13 +111,24 @@ class Dict:
 				tr = ""
 			self.get_word_by_key(en).add_value(en, tr, ru)
 
-	def reload_dict(self, path):
-		self.reload_dict_s(open(path).read())
+	def load_dict_as_json(self, path):
+		return json.load(codecs.open(path, "rt", "utf-8"))
 
-	def reload_stat_s(self, text):
-		stat_json = json.loads(text)
-		version   = stat_json["version"]
-		data      = stat_json["data"]
+	def reload_dict(self, path):
+		self.reload_dict_from_json(self.load_dict_as_json(path))
+
+	def save_dict(self, path, json_dict):
+		json.dump(json_dict, codecs.open(path, "wt", "utf-8"), cls=DictJSONEncoder)
+
+	def make_json_from_dict(self, keys):
+		if keys is None:
+			keys = self.words.keys()
+		words = [self.words.get(key, None) for key in keys]
+		return [list(w.get_source_info()) for w in words if w]
+
+	def _reload_stat_from_json(self, json_stat):
+		version   = json_stat["version"]
+		data      = json_stat["data"]
 
 		if version == 1:
 			data = statistic_v1_to_v2(data, self.cfg["MinPercent"], self.cfg["MinSuccessCnt"])
@@ -129,7 +140,14 @@ class Dict:
 
 	def reload_stat(self, path):
 		if os.path.exists(path):
-			self.reload_stat_s(open(path).read())
+			self._reload_stat_from_json(json.load(open(path)))
+
+	def save_stat(self, path):
+		data = {}
+		for it in self.words:
+			data[it] = self.words[it].pack()
+		stat_json = {"version": 2, "data": data}
+		json.dump(stat_json, open(path, "wb"), indent=2)
 
 	def global_statistic(self):
 		stat = global_stat.GlobalStatistic()
@@ -187,7 +205,7 @@ class Dict:
 		json_dict = self._rename_in_json_dict(old_en, new_en, new_tr, new_ru, json_dict)
 		self.reload_stat(self.cfg["path_to_stat"])
 		self._rename_in_dict(old_en, new_en, new_tr, new_ru)
-		json.dump(json_dict, codecs.open(self.cfg["path_to_dict"], "wt", "utf-8"), cls=DictJSONEncoder)
+		self.save_dict(self.cfg["path_to_dict"], json_dict)
 		self.save_stat(self.cfg["path_to_stat"])
 
 	def _loaded_words(self, type_pr):
@@ -229,13 +247,6 @@ class Dict:
 			it.set_rating(rating)
 		return lesson_words
 
-	def save_stat(self, path_to_stat):
-		data = {}
-		for it in self.words:
-			data[it] = self.words[it].pack()
-		stat_json = {"version": 2, "data": data}
-		json.dump(stat_json, open(path_to_stat, "wb"), indent=2)
-
 
 class DictTestCase(unittest.TestCase):
 	"Набор тестов для класса Dict"
@@ -257,13 +268,13 @@ class DictTestCase(unittest.TestCase):
 		return [self.create_word_data(i) for i in range(interval_from, interval_to)]
 
 	def load_dict(self, interval_from, interval_to):
-		txt_dict = json.dumps(self.json_dict(interval_from, interval_to))
-		self.dict_obj.reload_dict_s(txt_dict)
+		json_obj = self.json_dict(interval_from, interval_to)
+		self.dict_obj.reload_dict_from_json(json_obj)
 
 	def load_stat(self, interval_from, interval_to, version):
 		json_data = dict([self.create_word_stat(i) for i in range(interval_from, interval_to)])
 		json_stat = {"version": version, "data": json_data}
-		self.dict_obj.reload_stat_s(json.dumps(json_stat))
+		self.dict_obj._reload_stat_from_json(json_stat)
 
 	def assertLoad(self, num):
 		dt = self.create_word_data(num)
@@ -292,9 +303,8 @@ class DictTestCase(unittest.TestCase):
 
 	def test_reload_dict_empty_tr(self):
 		"Тест на загрузку словаря, в котором отсутствует или пустая транскрипция"
-		json_dict = [["en0", "ru0"], ["en1", "", "ru1"], ["en2", "tr2", "ru2"]]
-		txt_dict = json.dumps(json_dict)
-		self.dict_obj.reload_dict_s(txt_dict)
+		json_obj = [["en0", "ru0"], ["en1", "", "ru1"], ["en2", "tr2", "ru2"]]
+		self.dict_obj.reload_dict_from_json(json_obj)
 
 		self.assertEqual(("en0", "",      "ru0"), self.dict_obj.get_word_by_key("en0").get_show_info())
 		self.assertEqual(("en1", "",      "ru1"), self.dict_obj.get_word_by_key("en1").get_show_info())

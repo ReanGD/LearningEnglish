@@ -17,6 +17,12 @@ def run_statistic():
 	src.statistic_dialog.run_exclusive()
 
 
+def run_import_lingueleo():
+	import src.import_dict
+	os.chdir(os.path.dirname(os.path.abspath(__file__)))
+	src.import_dict.ImportDict().import_dict("lingualeo.txt", "lingualeo")
+
+
 def run_main():
 	import src.singleton
 	si = src.singleton.SingleInstance()
@@ -31,5 +37,7 @@ if __name__ == "__main__":
 		run_new_process()
 	elif "-stat" in sys.argv:
 		run_statistic()
+	elif "-lingualeo" in sys.argv:
+		run_import_lingueleo()
 	else:
 		run_main()

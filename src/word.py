@@ -125,7 +125,11 @@ class Word:
 
 	def get_source_info(self):
 		"Исходные данные слова, наиболее приближенные к виду в словаре"
-		return (self.en_source, self.transcription.strip("[]"), ", ".join(self.ru_source))
+		s = set()
+		s_add = s.add
+		# убираем из self.ru_source неуникальные элементы, сохраняя порядок
+		ru_source = ", ".join([x for x in self.ru_source if x not in s and not s_add(x)])
+		return (self.en_source, self.transcription.strip("[]"), ru_source)
 
 	def is_load(self):
 		return self.en_word != ""

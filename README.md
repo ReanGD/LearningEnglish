@@ -14,6 +14,7 @@ LearningEnglish
 * указывать несколько вариантов перевода через запятую
 * использовать уточнения в круглых скобках
 * заключать необязательную часть в квадратные скобки
+* Импортировать слова из Lingualeo, [подробнее](https://github.com/ReanGD/LearningEnglish/wiki/Импорт)
 
 [Подробнее в документации](https://github.com/ReanGD/LearningEnglish/wiki/Словарь)  
 
