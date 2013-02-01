@@ -33,10 +33,10 @@ class Column:
             raise ErrColumnList("Create a column with an empty caption")
         self.caption = caption
         self.width = width
-        if typedata == None:
+        if typedata is None:
             typedata = 'text'
         self.typedata = typedata
-        if align == None:
+        if align is None:
             align = 'center'
         self.align = align
         self.max_val = max_val
@@ -59,8 +59,8 @@ class ColumnList(object):
         self.columns.append(Column(caption, width, typedata, align, max_val))
 
     def clear(self):
-        self.columns         = []
-        self.sort_index      = None
+        self.columns = []
+        self.sort_index = None
         self.sort_is_reverse = True
 
     def get_sort_index(self):
@@ -73,7 +73,7 @@ class ColumnList(object):
         if self.count() <= col:
             msg = 'sort by column "%i", that does not exist' % col
             raise ErrColumnList(msg)
-        self.sort_index      = col
+        self.sort_index = col
         self.sort_is_reverse = is_reverse
 
 
@@ -122,10 +122,10 @@ class RowList(object):
     def sort(self, col, is_reverse, typedata):
         def comparer(left, right):
             if typedata in ('number', 'percent'):
-                left_col  = float(left[col])
+                left_col = float(left[col])
                 right_col = float(right[col])
             else:
-                left_col  = left[col].strip().lower()
+                left_col = left[col].strip().lower()
                 right_col = right[col].strip().lower()
             result = cmp(left_col, right_col)
             if (result != 0) or (result == 0 and col == 0):
@@ -140,11 +140,11 @@ class TableModel(object):
         if rowsperpage <= 0:
             rowsperpage = 100
         self.rowsperpage = rowsperpage
-        self.paginal     = paginal
+        self.paginal = paginal
         self.currentpage = 0
-        self.rowrange    = []
-        self.columns     = ColumnList()
-        self.data        = RowList()
+        self.rowrange = []
+        self.columns = ColumnList()
+        self.data = RowList()
         self.recalc_page(0)
 
     def add_column(self, caption, width=None, typedata=None, align=None, max_val=None):
@@ -219,7 +219,7 @@ class TableModel(object):
 
     def get_value(self, col, row):
         text = self.data.get(col, row)
-        if text != None:
+        if text is not None:
             if self.get_column(col).typedata == 'percent':
                 text += u' %'
         return text

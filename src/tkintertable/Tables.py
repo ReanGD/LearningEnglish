@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-#!/usr/bin/env python
 """
     Created Oct 2008
     TablePlotter Class
@@ -29,14 +28,14 @@ from types import *
 
 class ClippedText:
     def __init__(self, font, clip_str):
-        self.font     = font
+        self.font = font
         self.clip_str = clip_str
-        self.ch_len   = {}
+        self.ch_len = {}
         self.len_clip_str = self.font.measure(clip_str)
 
     def len_ch(self, ch):
         cache_len = self.ch_len.get(ch, None)
-        if cache_len == None:
+        if cache_len is None:
             cache_len = self.font.measure(ch)
             self.ch_len[ch] = cache_len
         return cache_len
@@ -77,7 +76,9 @@ class ClippedText:
 class TableCanvas(Canvas):
     """A tkinter class for providing table functionality"""
 
-    def __init__(self, parent, model, newdict=None, width=None, height=None, callback=None, sort_enable=True, dbl_click_callback=None, **kwargs):
+    def __init__(self, parent, model, newdict=None,
+                 width=None, height=None, callback=None,
+                 sort_enable=True, dbl_click_callback=None, **kwargs):
         Canvas.__init__(self, parent, bg='white',
                         width=width, height=height,
                         relief=GROOVE, scrollregion=(0, 0, 300, 200))
@@ -98,16 +99,16 @@ class TableCanvas(Canvas):
         self.time_sort = None
 
         self.parentframe = parent
-        self.width       = width
-        self.height      = height
+        self.width = width
+        self.height = height
 
         self.set_defaults()
-        #set any options passed in kwargs to overwrite defaults/prefs
+        # set any options passed in kwargs to overwrite defaults/prefs
         for key in kwargs:
             self.__dict__[key] = kwargs[key]
 
         self.model = model
-        if newdict != None:
+        if newdict is not None:
             self.createfromDict(newdict)
 
         self.rows = self.model.get_row_count()
@@ -129,29 +130,27 @@ class TableCanvas(Canvas):
         self.rowselectedcolor = '#CCCCFF'
         self.multipleselectioncolor = '#ECD672'
 
-        self.rowheight  = 20
+        self.rowheight = 20
         self.selectedcolor = 'yellow'
         self.grid_color = '#ABB1AD'
         self.text_color = 'black'
         self.tooltip_font_opt = ("Arial", -16, "bold")  # 12
-        self.text_font_opt    = ("Arial", -15, "normal")  # 11
+        self.text_font_opt = ("Arial", -15, "normal")  # 11
         self.padding = (5, 5)
         self.col_header_cfg = {
-              "height"     : 20
-            , "font"       : ("Arial", -15, "normal")  # 11
-            , "bg_clr"     : "gray25"
-            , "cell_clr"   : "gray75"
-            , "border_clr" : "white"
-            , "font_clr"   : "black"
-            }
+            "height": 20,
+            "font": ("Arial", -15, "normal"),  # 11
+            "bg_clr": "gray25",
+            "cell_clr": "gray75",
+            "border_clr": "white",
+            "font_clr": "black"}
         self.row_header_cfg = {
-              "width"      : 40
-            , "font"       : ("Arial", -15, "normal")  # 11
-            , "bg_clr"     : "gray25"
-            , "cell_clr"   : "gray75"
-            , "border_clr" : "white"
-            , "font_clr"   : "black"
-            }
+            "width": 40,
+            "font": ("Arial", -15, "normal"),  # 11
+            "bg_clr": "gray25",
+            "cell_clr": "gray75",
+            "border_clr": "white",
+            "font_clr": "black"}
 
     def getModel(self):
         """Get the current table model"""
@@ -172,7 +171,7 @@ class TableCanvas(Canvas):
         self.text_font = tkFont.Font(family=fnt[0], size=fnt[1], weight=fnt[2])
         self.clipped = ClippedText(self.text_font, u"..")
 
-        #Add the table and header to the frame
+        # Add the table and header to the frame
         self.Yscrollbar = AutoScrollbar(self.parentframe, orient=VERTICAL, command=self.set_yviews)
         self.Yscrollbar.grid(row=1, column=2, rowspan=1, sticky='news', pady=0, ipady=0)
         self.Xscrollbar = AutoScrollbar(self.parentframe, orient=HORIZONTAL, command=self.set_xviews)
@@ -239,12 +238,12 @@ class TableCanvas(Canvas):
         self.multiplecollist = [col]
 
     def is_valid_page_row(self, row):
-        if row == None:
+        if row is None:
             return False
         return 0 <= row < self.model.get_page_row_count()
 
     def is_valid_col(self, col):
-        if col == None:
+        if col is None:
             return False
         return 0 <= col < self.model.get_column_count()
 
@@ -307,23 +306,23 @@ class TableCanvas(Canvas):
     def draw_grid(self):
         """Draw the table grid lines"""
         self.delete('gridline', 'text')
-        rows    = self.model.get_page_row_count()
-        cols    = self.cols
-        h       = self.rowheight
+        rows = self.model.get_page_row_count()
+        cols = self.cols
+        h = self.rowheight
         x_start = self.x_start
-        x_stop  = self.tablewidth
+        x_stop = self.tablewidth
         y_start = self.y_start
-        y_stop  = y_start + rows * h
+        y_stop = y_start + rows * h
 
         for col in range(0, cols + 1):
             x = self.col_positions[col]
             self.create_line(x, y_start, x, y_stop, tag='gridline',
-                                 fill=self.grid_color, width=1)
+                             fill=self.grid_color, width=1)
 
         for row in range(0, rows + 1):
             y = y_start + row * h
             self.create_line(x_start, y, x_stop, y, tag='gridline',
-                                fill=self.grid_color, width=1)
+                             fill=self.grid_color, width=1)
 
     def draw_Text(self, row, col, celltxt, align):
         """Draw the text inside a cell area"""
@@ -332,7 +331,7 @@ class TableCanvas(Canvas):
         x1, y1, x2, y2 = self.getCellCoords(row, col)
         h = self.rowheight
         w = x2 - x1
-        padding_left  = self.padding[0]
+        padding_left = self.padding[0]
         padding_right = self.padding[1]
         allow_w = w - padding_left - padding_right
 
@@ -347,11 +346,12 @@ class TableCanvas(Canvas):
             anchor = CENTER
             x1 = x1 + padding_left + allow_w / 2
 
-        if self.callback != None:
+        if self.callback is not None:
             celltxt, clr = self.callback(row, col, celltxt, clr)
 
         clipped_text = self.clipped.clipped_text(celltxt, u"", allow_w)
-        self.create_text(x1, y1, text=clipped_text, fill=clr, font=self.text_font, anchor=anchor, tag=('text', 'celltext' + str(col) + '_' + str(row)))
+        self.create_text(x1, y1, text=clipped_text, fill=clr, font=self.text_font, anchor=anchor,
+                         tag=('text', 'celltext' + str(col) + '_' + str(row)))
         return clipped_text != celltxt
 
     def draw_tooltip(self):
@@ -359,22 +359,22 @@ class TableCanvas(Canvas):
         self.pointer[2] = None
         self.delete('tooltip')
 
-        x   = int(self.canvasx(self.winfo_pointerx() - self.winfo_rootx()))
-        y   = int(self.canvasy(self.winfo_pointery() - self.winfo_rooty()))
+        x = int(self.canvasx(self.winfo_pointerx() - self.winfo_rootx()))
+        y = int(self.canvasy(self.winfo_pointery() - self.winfo_rooty()))
         col = self.pointer[0]
         row = self.pointer[1]
 
         if self.get_row_clicked_by_coord(y) != row or self.get_col_clicked_by_coord(x) != col:
             return
 
-        row  = self.model.page_row_to_absolute_row(row)
+        row = self.model.page_row_to_absolute_row(row)
         text = self.model.get_value(col, row)
         text, clr = self.callback(row, col, text, None)
 
         if text == '':
             return
 
-        tooltip_width  = self.tooltip_font.measure(text) + 5
+        tooltip_width = self.tooltip_font.measure(text) + 5
         tooltip_height = self.tooltip_font.metrics("linespace") + 5
         screen_x1 = self.canvasx(0)
         screen_x2 = screen_x1 + self.winfo_width()
@@ -422,7 +422,10 @@ class TableCanvas(Canvas):
         for row in rowlist:
             x1, y1, x2, y2 = self.getCellCoords(row, 0)
             x2 = self.tablewidth
-            self.create_rectangle(x1, y1, x2, y2, fill=self.multipleselectioncolor, outline=self.rowselectedcolor, tag=('multiplesel', 'rowrect'))
+            self.create_rectangle(x1, y1, x2, y2,
+                                  fill=self.multipleselectioncolor,
+                                  outline=self.rowselectedcolor,
+                                  tag=('multiplesel', 'rowrect'))
         self.lower('multiplesel')
 
     def drawSelectedRect(self):
@@ -430,7 +433,12 @@ class TableCanvas(Canvas):
         self.delete('currentrect')
         w = 3
         x1, y1, x2, y2 = self.getCellCoords(self.currentrow, self.currentcol)
-        self.create_rectangle(x1 + w / 2, y1 + w / 2, x2 - w / 2, y2 - w / 2, fill=self.selectedcolor, outline='gray25', width=w, stipple='gray50', tag='currentrect')
+        self.create_rectangle(x1 + w / 2, y1 + w / 2, x2 - w / 2, y2 - w / 2,
+                              fill=self.selectedcolor,
+                              outline='gray25',
+                              width=w,
+                              stipple='gray50',
+                              tag='currentrect')
         self.lift('celltext' + str(self.currentcol) + '_' + str(self.currentrow))
 
     def drawMultipleCells(self):
@@ -441,7 +449,12 @@ class TableCanvas(Canvas):
         w = 2
         x1, y1, a, b = self.getCellCoords(rows[0], cols[0])
         c, d, x2, y2 = self.getCellCoords(rows[len(rows) - 1], cols[len(cols) - 1])
-        self.create_rectangle(x1 + w / 2, y1 + w / 2, x2, y2, outline='blue', width=w, activefill='red', activestipple='gray25', tag='multicellrect')
+        self.create_rectangle(x1 + w / 2, y1 + w / 2, x2, y2,
+                              outline='blue',
+                              width=w,
+                              activefill='red',
+                              activestipple='gray25',
+                              tag='multicellrect')
 
     def clearSelected(self):
         self.delete('tooltip')
@@ -468,14 +481,14 @@ class TableCanvas(Canvas):
             self.drawNavFrame()
 
         self.configure(scrollregion=(0, 0, self.tablewidth + self.x_start,
-                                           self.rowheight * self.model.get_page_row_count() + 10
-                                           ))  # todo
+                                     self.rowheight * self.model.get_page_row_count() + 10
+                                     ))  # todo
         self.draw_grid()
         self.update_idletasks()
         self.tablecolheader.redraw()
         self.tablerowheader.redraw()
 
-        #now draw model data in cells
+        # now draw model data in cells
         self.clipped_tbl = []
         for col in range(self.cols):
             clipped_row = []
@@ -488,9 +501,9 @@ class TableCanvas(Canvas):
             self.update_idletasks()
 
         self.startrow = 0
-        self.endrow   = 0
+        self.endrow = 0
         self.startcol = 0
-        self.endcol   = 0
+        self.endcol = 0
         self.setSelectedRow(0)
         self.setSelectedCol(0)
         self.clearSelected()
@@ -504,29 +517,29 @@ class TableCanvas(Canvas):
 
     def do_bindings(self):
         """Bind keys and mouse clicks, this can be overriden"""
-        self.bind("<Button-1>",        self.handle_left_click)
-        self.bind("<Shift-Button-1>",  self.handle_left_shift_click)
+        self.bind("<Button-1>", self.handle_left_click)
+        self.bind("<Shift-Button-1>", self.handle_left_shift_click)
         self.bind("<ButtonRelease-1>", self.handle_left_release)
-        self.bind('<B1-Motion>',       self.handle_mouse_drag)
-        self.bind('<Motion>',          self.handle_motion)
+        self.bind('<B1-Motion>', self.handle_mouse_drag)
+        self.bind('<Motion>', self.handle_motion)
         if self.dbl_click_callback:
             self.bind("<Double-Button-1>", self.handle_left_dbl_click)
 
-        self.parentframe.master.bind("<Up>",     self.handle_arrow_keys)
-        self.parentframe.master.bind("<Down>",   self.handle_arrow_keys)
-        self.parentframe.master.bind("<Right>",  self.handle_arrow_keys)
-        self.parentframe.master.bind("<Left>",   self.handle_arrow_keys)
-        self.parentframe.master.bind("<Prior>",  self.handle_arrow_keys)
-        self.parentframe.master.bind("<Next>",   self.handle_arrow_keys)
-        self.parentframe.master.bind("<Home>",   self.handle_arrow_keys)
-        self.parentframe.master.bind("<End>",    self.handle_arrow_keys)
+        self.parentframe.master.bind("<Up>", self.handle_arrow_keys)
+        self.parentframe.master.bind("<Down>", self.handle_arrow_keys)
+        self.parentframe.master.bind("<Right>", self.handle_arrow_keys)
+        self.parentframe.master.bind("<Left>", self.handle_arrow_keys)
+        self.parentframe.master.bind("<Prior>", self.handle_arrow_keys)
+        self.parentframe.master.bind("<Next>", self.handle_arrow_keys)
+        self.parentframe.master.bind("<Home>", self.handle_arrow_keys)
+        self.parentframe.master.bind("<End>", self.handle_arrow_keys)
 
         self.parentframe.master.bind("<MouseWheel>",
-            lambda event=None: self.mouse_wheel(-math.trunc(math.copysign(1, event.delta))))
+                                     lambda event=None: self.mouse_wheel(-math.trunc(math.copysign(1, event.delta))))
         self.parentframe.master.bind('<Button-4>',
-            lambda event=None: self.mouse_wheel(-1))
+                                     lambda event=None: self.mouse_wheel(-1))
         self.parentframe.master.bind('<Button-5>',
-            lambda event=None: self.mouse_wheel(1))
+                                     lambda event=None: self.mouse_wheel(1))
 
         self.parentframe.bind("<Configure>", self.resizeTable)
 
@@ -538,7 +551,9 @@ class TableCanvas(Canvas):
             return
 
         self.delete('tooltip')
-        if self.is_valid_page_row(rowclicked) and self.is_valid_col(colclicked) and self.clipped_tbl[colclicked][rowclicked]:
+        if (self.is_valid_page_row(rowclicked)
+                and self.is_valid_col(colclicked)
+                and self.clipped_tbl[colclicked][rowclicked]):
             if self.pointer[2] is not None:
                 self.after_cancel(self.pointer[2])
             self.pointer[0] = colclicked
@@ -553,9 +568,9 @@ class TableCanvas(Canvas):
             return
 
         self.startrow = rowclicked
-        self.endrow   = rowclicked
+        self.endrow = rowclicked
         self.startcol = colclicked
-        self.endcol   = colclicked
+        self.endcol = colclicked
         self.setSelectedRow(rowclicked)
         self.setSelectedCol(colclicked)
         self.clearSelected()
@@ -579,12 +594,12 @@ class TableCanvas(Canvas):
             return
         self.endrow = rowclicked
         self.endcol = colclicked
-        #do columns
+        # do columns
         if self.endcol < self.startcol:
             self.multiplecollist = range(self.endcol, self.startcol + 1)
         else:
             self.multiplecollist = range(self.startcol, self.endcol + 1)
-        #draw the selected rows
+        # draw the selected rows
         if self.endrow != self.startrow:
             if self.endrow < self.startrow:
                 self.multiplerowlist = range(self.endrow, self.startrow + 1)
@@ -592,7 +607,7 @@ class TableCanvas(Canvas):
                 self.multiplerowlist = range(self.startrow, self.endrow + 1)
             self.drawMultipleRows(self.multiplerowlist)
             self.tablerowheader.drawSelectedRows(self.multiplerowlist)
-            #draw selected cells outline using row and col lists
+            # draw selected cells outline using row and col lists
             self.drawMultipleCells()
         else:
             self.multiplerowlist = []
@@ -603,7 +618,7 @@ class TableCanvas(Canvas):
 
     def handle_left_shift_click(self, event):
         """Handle shift click, for selecting multiple rows"""
-        #Has same effect as mouse drag, so just use same method
+        # Has same effect as mouse drag, so just use same method
         self.handle_mouse_drag(event)
 
     def handle_left_release(self, event):
@@ -611,7 +626,7 @@ class TableCanvas(Canvas):
 
     def scroll_table_by_y(self, cnt):
         row_cnt = self.model.get_page_row_count()
-        h       = float(self.rowheight)
+        h = float(self.rowheight)
         self.currentrow = min(max(self.currentrow + cnt, 0), row_cnt - 1)
 
         x1, y1, x2, y2 = self.getCellCoords(self.currentrow, 0)
@@ -664,9 +679,9 @@ class TableCanvas(Canvas):
             self.scroll_table_by_x(-1)
 
         self.startrow = self.currentrow
-        self.endrow   = self.currentrow
+        self.endrow = self.currentrow
         self.startcol = self.currentcol
-        self.endcol   = self.currentcol
+        self.endcol = self.currentcol
         self.setSelectedRow(self.currentrow)
         self.setSelectedCol(self.currentcol)
         self.clearSelected()
@@ -679,9 +694,9 @@ class TableCanvas(Canvas):
         self.scroll_table_by_y(delta)
 
         self.startrow = self.currentrow
-        self.endrow   = self.currentrow
+        self.endrow = self.currentrow
         self.startcol = self.currentcol
-        self.endcol   = self.currentcol
+        self.endcol = self.currentcol
         self.setSelectedRow(self.currentrow)
         self.setSelectedCol(self.currentcol)
         self.clearSelected()
@@ -753,7 +768,7 @@ class TableCanvas(Canvas):
 
     def resizeTable(self, event):
         """Respond to a resize event - redraws table"""
-        if self.autoresizecols == 1 and event != None:
+        if self.autoresizecols == 1 and event is not None:
             self.cellwidth = (event.width - self.x_start - 24) / self.cols
             self.redrawTable()
 
@@ -785,19 +800,19 @@ class ColumnHeader(Canvas):
 
     def __init__(self, parent, table, cfg):
         Canvas.__init__(self, parent, bg=cfg["bg_clr"], width=table.width, height=cfg["height"], cursor="")
-        self.table       = table
-        fnt              = cfg["font"]
-        self.thefont     = tkFont.Font(family=fnt[0], size=fnt[1], weight=fnt[2])
-        self.clipped     = ClippedText(self.thefont, u".")
-        self.font_clr    = cfg["font_clr"]
-        self.cell_clr    = cfg["cell_clr"]
-        self.border_clr  = cfg["border_clr"]
+        self.table = table
+        fnt = cfg["font"]
+        self.thefont = tkFont.Font(family=fnt[0], size=fnt[1], weight=fnt[2])
+        self.clipped = ClippedText(self.thefont, u".")
+        self.font_clr = cfg["font_clr"]
+        self.cell_clr = cfg["cell_clr"]
+        self.border_clr = cfg["border_clr"]
         self.resize_mode = False
-        self.sort_mode   = False
-        self.bind("<Button-1>",        self.handle_left_click)
+        self.sort_mode = False
+        self.bind("<Button-1>", self.handle_left_click)
         self.bind("<ButtonRelease-1>", self.handle_left_release)
-        self.bind("<B1-Motion>",       self.handle_mouse_drag)
-        self.bind("<Motion>",          self.handle_mouse_move)
+        self.bind("<B1-Motion>", self.handle_mouse_drag)
+        self.bind("<Motion>", self.handle_mouse_move)
 
     def get_font(self):
         return self.thefont
@@ -839,7 +854,7 @@ class ColumnHeader(Canvas):
         """Does cell selection when mouse is clicked on canvas"""
         self.table.delete('multicellrect')
         self.resize_mode = False
-        self.sort_mode   = False
+        self.sort_mode = False
 
         resize_col = self.get_col_for_resize(event)
         if resize_col is not None:
@@ -878,9 +893,9 @@ class ColumnHeader(Canvas):
             self.table.delete('resizeline')
             self.delete('resizeline')
             self.table.create_line(x, 0, x, self.table.rowheight * self.table.rows,
-                                width=2, fill='gray', tag='resizeline')
+                                   width=2, fill='gray', tag='resizeline')
             self.create_line(x, 0, x, int(self["height"]),
-                                width=2, fill='gray', tag='resizeline')
+                             width=2, fill='gray', tag='resizeline')
 
     def handle_mouse_move(self, event):
         """Handle mouse moved in header, if near divider draw resize symbol"""
@@ -909,11 +924,11 @@ class RowHeader(Canvas):
         self.table = table
         self.x_start = 40  # todo
         self.inset = 1  # todo
-        self.startrow   = self.endrow = None
-        fnt             = cfg["font"]
-        self.thefont    = tkFont.Font(family=fnt[0], size=fnt[1], weight=fnt[2])
-        self.font_clr   = cfg["font_clr"]
-        self.cell_clr   = cfg["cell_clr"]
+        self.startrow = self.endrow = None
+        fnt = cfg["font"]
+        self.thefont = tkFont.Font(family=fnt[0], size=fnt[1], weight=fnt[2])
+        self.font_clr = cfg["font_clr"]
+        self.cell_clr = cfg["cell_clr"]
         self.border_clr = cfg["border_clr"]
         self.bind('<Button-1>', self.handle_left_click)
         self.bind("<Control-Button-1>", self.handle_left_ctrl_click)
@@ -922,8 +937,8 @@ class RowHeader(Canvas):
     def redraw(self):
         """Redraw row header"""
         self.configure(scrollregion=(0, 0, int(self["width"]),
-                                          self.table.rowheight * self.table.model.get_page_row_count() + 10
-                                          ))
+                                     self.table.rowheight * self.table.model.get_page_row_count() + 10
+                                     ))
 
         self.delete('rowheader', 'text')
         self.delete('rect')
@@ -933,7 +948,10 @@ class RowHeader(Canvas):
         h = self.table.rowheight
         for i, row in enumerate(self.table.model.get_page_rows()):
             x1, y1, x2, y2 = self.table.getCellCoords(i, 0)
-            self.create_rectangle(0, y1, x_start - w, y2, fill=self.cell_clr, outline=self.border_clr, width=w, tag='rowheader')
+            self.create_rectangle(0, y1, x_start - w, y2,
+                                  fill=self.cell_clr,
+                                  outline=self.border_clr,
+                                  width=w, tag='rowheader')
             self.create_text(x_start / 2, y1 + h / 2, text=row + 1, fill=self.font_clr, font=self.thefont, tag='text')
 
     def handle_left_click(self, event):
@@ -967,7 +985,7 @@ class RowHeader(Canvas):
             return
         else:
             self.endrow = rowclicked
-        #draw the selected rows
+        # draw the selected rows
         if self.endrow != self.startrow:
             if self.endrow < self.startrow:
                 rowlist = range(self.endrow, self.startrow + 1)
@@ -995,11 +1013,11 @@ class RowHeader(Canvas):
 
     def draw_rect(self, row=None, tag=None, color=None, outline=None, delete=1):
         """Draw a rect representing row selection"""
-        if tag == None:
+        if tag is None:
             tag = 'rect'
-        if color == None:
+        if color is None:
             color = '#0099CC'
-        if outline == None:
+        if outline is None:
             outline = 'gray25'
         if delete == 1:
             self.delete(tag)
