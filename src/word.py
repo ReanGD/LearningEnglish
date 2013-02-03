@@ -9,6 +9,7 @@ ru_to_en_write = 1
 
 reg_cmnt = re.compile("\(.*?\)")
 reg_no_sign_part = re.compile("\[.*?\]")
+reg_split = re.compile("((?:\(.*?\)|[^,])*)")
 
 
 class WordInfo:
@@ -67,14 +68,17 @@ class Word:
         def prepare_word(w):
             return reg_no_sign_part.sub(".*?", reg_cmnt.sub("", w.lower()).strip())
 
+        def split(w):
+            return [it.strip() for it in reg_split.split(w) if it.strip() not in (",", "")]
+
         if self.en_word == "":
             self.en_source = en_word
-            en_split = map(lambda x: x.strip(), en_word.split(","))
+            en_split = split(en_word)
             self.en_word = Word._prepare_show_words(en_split)
             self.en_word_list = map(lambda x: prepare_word(x), en_split)
         if self.transcription == "" and transcription is not None and transcription.strip() != "":
             self.transcription = "[%s]" % transcription.strip()
-        self.ru_source += map(lambda x: x.strip(), ru_word.split(","))
+        self.ru_source += split(ru_word)
 
         self.ru_word = Word._prepare_show_words(self.ru_source)
         self.ru_word_list = map(lambda x: Word._convert_spec_chars(prepare_word(x)), self.ru_source)
@@ -242,6 +246,28 @@ class WordTestCase(unittest.TestCase):
         self.assertEqual(self.word.transcription, u"[\'he\'ləu]")
         self.assertEqual(self.word.ru_word, u"привет (Здоровается), алло")
         self.assertEqual(self.word.ru_word_list, [u"привет", u"алло"])
+
+    def test_add_value_ru_cmnt_with_comma(self):
+        "Тест на обработку русских комментариев с запятыми"
+        self.word.add_value(u"hijacking", u"", u"угон (самолета, судна, автомобиля), кража (из автомобиля)")
+
+        self.assertEqual(self.word.en_word, u"hijacking")
+        self.assertEqual(self.word.en_source, u"hijacking")
+        self.assertEqual(self.word.en_word_list, [u"hijacking"])
+        self.assertEqual(self.word.transcription, u"")
+        self.assertEqual(self.word.ru_word, u"угон (самолета, судна, автомобиля), кража (из автомобиля)")
+        self.assertEqual(self.word.ru_word_list, [u"угон", u"кража"])
+
+    def test_add_value_en_cmnt_with_comma(self):
+        "Тест на обработку английских комментариев с запятыми"
+        self.word.add_value(u"hello (hello1, hello2, hello3), hi (hi1, hi2)", u"", u"привет")
+
+        self.assertEqual(self.word.en_word, u"hello (hello1, hello2, hello3), hi (hi1, hi2)")
+        self.assertEqual(self.word.en_source, u"hello (hello1, hello2, hello3), hi (hi1, hi2)")
+        self.assertEqual(self.word.en_word_list, [u"hello", u"hi"])
+        self.assertEqual(self.word.transcription, u"")
+        self.assertEqual(self.word.ru_word, u"привет")
+        self.assertEqual(self.word.ru_word_list, [u"привет"])
 
     def test_add_value_no_sign_part(self):
         "Тест на корректную обработку необязательных частей в англиском и русском словах"
