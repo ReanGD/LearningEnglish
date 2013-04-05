@@ -56,6 +56,11 @@ class MainWindow(Tk):
         bt.image = img
         bt.pack(side="right")
 
+        img = find_in_web_image()
+        self.find_in_web_btn = Button(frm_btn, image=img, bg=clr_stat_frame, relief="flat", command=self.on_find_in_web)
+        self.find_in_web_btn.image = img
+        self.find_in_web_btn.pack(side="right")
+
         img = edit_image()
         self.edit_btn = Button(frm_btn, image=img, bg=clr_stat_frame, relief="flat", command=self.on_rename)
         self.edit_btn.image = img
@@ -129,6 +134,9 @@ class MainWindow(Tk):
     def get_source_info(self):
         pass
 
+    def is_rur(self):
+        pass
+
     def show(self):
         self.deiconify()
         self.edit_translate.focus()
@@ -145,6 +153,7 @@ class MainWindow(Tk):
         self.withdraw()
 
     def set_question(self, new_word):
+        self.show_find_in_web_btn(False)
         self.show_edit_word_btn(False)
         self.lbl_word["text"] = new_word.word
         self.lbl_transcription["text"] = "" if self.cfg["hide_transcription"] == "yes" else new_word.transcription
@@ -169,6 +178,7 @@ class MainWindow(Tk):
         self.lbl_correct_word_tr["text"] = "" if self.cfg["hide_transcription"] == "yes" else right_answer.transcription
         self.lbl_result_msg["text"] = _("correct")
         self.lbl_result_msg["fg"] = clr_success
+        self.show_find_in_web_btn(True)
         self.show_edit_word_btn(True)
 
     def set_wrong_answer(self, right_answer):
@@ -179,6 +189,7 @@ class MainWindow(Tk):
         self.lbl_correct_word_tr["text"] = "" if self.cfg["hide_transcription"] == "yes" else right_answer.transcription
         self.lbl_result_msg["text"] = _("incorrect")
         self.lbl_result_msg["fg"] = clr_error
+        self.show_find_in_web_btn(True)
         self.show_edit_word_btn(True)
 
     def set_repeat(self):
@@ -194,6 +205,12 @@ class MainWindow(Tk):
             self.edit_btn.pack(side="right")
         else:
             self.edit_btn.pack_forget()
+
+    def show_find_in_web_btn(self, is_show):
+        if is_show:
+            self.find_in_web_btn.pack(side="right")
+        else:
+            self.find_in_web_btn.pack_forget()
 
     def on_return(self, event):
         if self.state == "waiting_for_answer":
@@ -212,6 +229,10 @@ class MainWindow(Tk):
     def on_rename(self, event=None):
         if self.state == "continue":
             self.factory.get_operation("EditWord").set_callback(self.rename_word).execute(self, self.get_source_info())
+
+    def on_find_in_web(self, event=None):
+        if self.state == "continue":
+            self.factory.get_operation("FindInWeb").execute(self.lbl_word["text"], self.is_rur())
 
     def on_destroy(self):
         dlg = CloseDialog(self)
@@ -311,7 +332,7 @@ class _LookManager:
 
 
 def _test_run():
-    wnd = MainWindow()
+    wnd = MainWindow(None)
     manager = _LookManager(wnd)
     wnd.bind("<Return>", manager.next)
     import config

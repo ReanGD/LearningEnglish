@@ -51,6 +51,13 @@
           no - пустой ответ не принимается вообще
     */
     ,"empty_answer_is_error": "no"
+    /*
+        Шаблон url по которому можно просмотреть/найте перевод слова в интернете
+    */
+    ,"internet_dictionary_url": {
+        "EN_RU": "http://slovari.yandex.ru/{word}/en-ru/#lingvo/",
+        "RU_EN": "http://slovari.yandex.ru/{word}/en/#lingvo/"
+    }
 
 
     /*

@@ -78,3 +78,6 @@ class App(MainWindow):
 
     def get_source_info(self):
         return self.practice.get_source_info()
+
+    def is_rur(self):
+        return self.practice.is_rur()

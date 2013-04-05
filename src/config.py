@@ -51,6 +51,9 @@ class Config:
         cfg["right_answer_percent"] = float(cfg.get("right_answer_percent", 10.0))
         cfg["wrong_answer_percent"] = float(cfg.get("wrong_answer_percent", 40.0))
         cfg["empty_answer_is_error"] = cfg.get("empty_answer_is_error", "no")
+        cfg["internet_dictionary_url"] = cfg.get("internet_dictionary_url",
+                                                 {"EN_RU": "http://slovari.yandex.ru/{word}/en-ru/#lingvo/",
+                                                  "RU_EN": "http://slovari.yandex.ru/{word}/en/#lingvo/"})
 
     def create_default_user_config(self):
         if not os.path.isfile(self._user_path):
@@ -82,7 +85,7 @@ class ConfigTestCase(unittest.TestCase):
     def equal_cfg(self, cfg, test_dict):
         for key, val in test_dict.items():
             self.assertEqual(cfg[key], val)
-        self.assertEqual(len(cfg), 13)
+        self.assertEqual(len(cfg), 14)
 
     def test_main(self):
         "Тестирование загрузки основного файла с конфигурацией"
@@ -100,7 +103,9 @@ class ConfigTestCase(unittest.TestCase):
             "stat_count_row": 200,
             "right_answer_percent": 10.0,
             "wrong_answer_percent": 40.0,
-            "empty_answer_is_error": "no"}
+            "empty_answer_is_error": "no",
+            "internet_dictionary_url": {"EN_RU": "http://slovari.yandex.ru/{word}/en-ru/#lingvo/",
+                                        "RU_EN": "http://slovari.yandex.ru/{word}/en/#lingvo/"}}
 
         cfg = Config("config.json", "fake_config_user.json")
         cfg.reload()
@@ -122,7 +127,9 @@ class ConfigTestCase(unittest.TestCase):
             "stat_count_row": 300,
             "right_answer_percent": 20.0,
             "wrong_answer_percent": 50.0,
-            "empty_answer_is_error": "yes"}
+            "empty_answer_is_error": "yes",
+            "internet_dictionary_url": {"EN_RU": "http1://slovari.yandex.ru/{word}/en-ru/#lingvo/",
+                                        "RU_EN": "http1://slovari.yandex.ru/{word}/en/#lingvo/"}}
 
         json.dump(test_dict, open("test_config_user.json", "w"))
         cfg = Config("config.json", "test_config_user.json")
@@ -171,7 +178,9 @@ class ConfigTestCase(unittest.TestCase):
             "stat_count_row": 200,
             "right_answer_percent": 10.0,
             "wrong_answer_percent": 40.0,
-            "empty_answer_is_error": "no"}
+            "empty_answer_is_error": "no",
+            "internet_dictionary_url": {"EN_RU": "http://slovari.yandex.ru/{word}/en-ru/#lingvo/",
+                                        "RU_EN": "http://slovari.yandex.ru/{word}/en/#lingvo/"}}
 
         cfg = Config("config.json", "fake_config_user.json")
         cfg.reload()

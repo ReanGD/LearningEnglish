@@ -20,6 +20,9 @@ class Practice:
     def is_new(self):
         return self.word.is_new(self.type_pr)
 
+    def is_rur(self):
+        return self.type_pr == word.ru_to_en_write
+
     def get_source_info(self):
         return self.word.get_source_info()
 
