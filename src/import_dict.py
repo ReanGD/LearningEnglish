@@ -9,7 +9,7 @@ class ImportDict:
 
     def _lingualeo(self, path):
         json_dict = []
-        for line in codecs.open(path, "rt", "utf-8"):
+        for line in codecs.open(path, "r", "utf-8"):
             json_dict.append(map(lambda x: x.strip().strip("[]"), line.split("\t")[1:]))
         return json_dict
 

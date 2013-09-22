@@ -112,13 +112,13 @@ class Dict:
             self.get_word_by_key(en).add_value(en, tr, ru)
 
     def load_dict_as_json(self, path):
-        return json.load(codecs.open(path, "rt", "utf-8"))
+        return json.load(codecs.open(path, "r", "utf-8"))
 
     def reload_dict(self, path):
         self.reload_dict_from_json(self.load_dict_as_json(path))
 
     def save_dict(self, path, json_dict):
-        json.dump(json_dict, codecs.open(path, "wt", "utf-8"), cls=DictJSONEncoder)
+        json.dump(json_dict, codecs.open(path, "w", "utf-8"), cls=DictJSONEncoder)
 
     def make_json_from_dict(self, keys):
         if keys is None:
@@ -201,7 +201,7 @@ class Dict:
 
         self.cfg.reload()
 
-        json_dict = json.load(codecs.open(self.cfg["path_to_dict"], "rt", "utf-8"))
+        json_dict = json.load(codecs.open(self.cfg["path_to_dict"], "r", "utf-8"))
         json_dict = self._rename_in_json_dict(old_en, new_en, new_tr, new_ru, json_dict)
         self.reload_stat(self.cfg["path_to_stat"])
         self._rename_in_dict(old_en, new_en, new_tr, new_ru)
